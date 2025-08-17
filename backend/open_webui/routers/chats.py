@@ -341,17 +341,32 @@ async def get_user_chat_list_by_tag_name(
 
 
 @router.get("/{id}", response_model=Optional[ChatResponse])
-async def get_chat_by_id(id: str, user=Depends(get_verified_user)):
+async def get_chat_by_id(id: str, request: Request, user=Depends(get_verified_user)):
+    redis = getattr(request.app.state.config, "_redis", None)
+    cache_key = f"open-webui:chat:{user.id}:{id}"
+
+    if redis:
+        cached_chat = redis.get(cache_key)
+        if cached_chat:
+            try:
+                print(f"Cache hit for chat {id} for user {user.id}")
+                return ChatResponse(**json.loads(cached_chat))
+            except json.JSONDecodeError:
+                redis.delete(cache_key)
+
     chat = Chats.get_chat_by_id_and_user_id(id, user.id)
 
     if chat:
+        if redis:
+            redis.set(cache_key, json.dumps(chat.model_dump()), ex=300)
+        print(f"Cache miss for chat {id} for user {user.id}")
         return ChatResponse(**chat.model_dump())
 
     else:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail=ERROR_MESSAGES.NOT_FOUND
         )
-
+    
 
 ############################
 # UpdateChatById
