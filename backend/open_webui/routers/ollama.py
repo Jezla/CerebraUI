@@ -467,6 +467,17 @@ async def get_ollama_tags(
 @router.get("/api/version/{url_idx}")
 async def get_ollama_versions(request: Request, url_idx: Optional[int] = None):
     if request.app.state.config.ENABLE_OLLAMA_API:
+        redis = getattr(request.app.state.config, "_redis", None)
+        cache_key = f"open-webui:ollama:version:{url_idx if url_idx is not None else 'all'}"
+
+        if redis:
+            cached_version = redis.get(cache_key)
+            if cached_version:
+                try:
+                    return json.loads(cached_version)
+                except json.JSONDecodeError:
+                    redis.delete(cache_key)
+                    
         if url_idx is None:
             # returns lowest version
             request_tasks = []
@@ -501,7 +512,10 @@ async def get_ollama_versions(request: Request, url_idx: Optional[int] = None):
                     ),
                 )
 
-                return {"version": lowest_version["version"]}
+                result = {"version": lowest_version["version"]}
+                if redis:
+                    redis.set(cache_key, json.dumps(result), ex=300)
+                return result
             else:
                 raise HTTPException(
                     status_code=500,
@@ -515,7 +529,10 @@ async def get_ollama_versions(request: Request, url_idx: Optional[int] = None):
                 r = requests.request(method="GET", url=f"{url}/api/version")
                 r.raise_for_status()
 
-                return r.json()
+                result = r.json()
+                if redis:
+                    redis.set(cache_key, json.dumps(result), ex=300)
+                return result
             except Exception as e:
                 log.exception(e)
 
