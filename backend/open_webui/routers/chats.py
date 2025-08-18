@@ -729,11 +729,28 @@ async def update_chat_folder_id_by_id(
 
 
 @router.get("/{id}/tags", response_model=list[TagModel])
-async def get_chat_tags_by_id(id: str, user=Depends(get_verified_user)):
+async def get_chat_tags_by_id(id: str, request: Request, user=Depends(get_verified_user)):
+    redis = getattr(request.app.state.config, "_redis", None)
+    cache_key = f"open-webui:chat:tags:{user.id}:{id}"
+
+    if redis:
+        cached_tags = redis.get(cache_key)
+        if cached_tags:
+            try:
+                return [TagModel(**tag) for tag in json.loads(cached_tags)]
+            except json.JSONDecodeError:
+                redis.delete(cache_key)
     chat = Chats.get_chat_by_id_and_user_id(id, user.id)
     if chat:
         tags = chat.meta.get("tags", [])
-        return Tags.get_tags_by_ids_and_user_id(tags, user.id)
+        tags_list = Tags.get_tags_by_ids_and_user_id(tags, user.id)
+        if redis:
+            redis.set(
+                cache_key,
+                json.dumps([tag.model_dump() for tag in tags_list]),
+                ex=300,
+            )
+        return tags_list
     else:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail=ERROR_MESSAGES.NOT_FOUND
@@ -747,9 +764,11 @@ async def get_chat_tags_by_id(id: str, user=Depends(get_verified_user)):
 
 @router.post("/{id}/tags", response_model=list[TagModel])
 async def add_tag_by_id_and_tag_name(
-    id: str, form_data: TagForm, user=Depends(get_verified_user)
+    id: str, request: Request, form_data: TagForm, user=Depends(get_verified_user)
 ):
     chat = Chats.get_chat_by_id_and_user_id(id, user.id)
+    redis = getattr(request.app.state.config, "_redis", None)
+    cache_key = f"open-webui:chat:tags:{user.id}:{id}"
     if chat:
         tags = chat.meta.get("tags", [])
         tag_id = form_data.name.replace(" ", "_").lower()
@@ -767,7 +786,14 @@ async def add_tag_by_id_and_tag_name(
 
         chat = Chats.get_chat_by_id_and_user_id(id, user.id)
         tags = chat.meta.get("tags", [])
-        return Tags.get_tags_by_ids_and_user_id(tags, user.id)
+        tags_list = Tags.get_tags_by_ids_and_user_id(tags, user.id)
+        if redis:
+            redis.set(
+                cache_key,
+                json.dumps([tag.model_dump() for tag in tags_list]),
+                ex=300,
+            )
+        return tags_list
     else:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail=ERROR_MESSAGES.DEFAULT()
@@ -781,9 +807,11 @@ async def add_tag_by_id_and_tag_name(
 
 @router.delete("/{id}/tags", response_model=list[TagModel])
 async def delete_tag_by_id_and_tag_name(
-    id: str, form_data: TagForm, user=Depends(get_verified_user)
+    id: str, request: Request, form_data: TagForm, user=Depends(get_verified_user)
 ):
     chat = Chats.get_chat_by_id_and_user_id(id, user.id)
+    redis = getattr(request.app.state.config, "_redis", None)
+    cache_key = f"open-webui:chat:tags:{user.id}:{id}"
     if chat:
         Chats.delete_tag_by_id_and_user_id_and_tag_name(id, user.id, form_data.name)
 
@@ -792,7 +820,14 @@ async def delete_tag_by_id_and_tag_name(
 
         chat = Chats.get_chat_by_id_and_user_id(id, user.id)
         tags = chat.meta.get("tags", [])
-        return Tags.get_tags_by_ids_and_user_id(tags, user.id)
+        tags_list = Tags.get_tags_by_ids_and_user_id(tags, user.id)
+        if redis:
+            redis.set(
+                cache_key,
+                json.dumps([tag.model_dump() for tag in tags_list]),
+                ex=300,
+            )
+        return tags_list
     else:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail=ERROR_MESSAGES.NOT_FOUND
@@ -805,8 +840,10 @@ async def delete_tag_by_id_and_tag_name(
 
 
 @router.delete("/{id}/tags/all", response_model=Optional[bool])
-async def delete_all_tags_by_id(id: str, user=Depends(get_verified_user)):
+async def delete_all_tags_by_id(id: str, request: Request, user=Depends(get_verified_user)):
     chat = Chats.get_chat_by_id_and_user_id(id, user.id)
+    redis = getattr(request.app.state.config, "_redis", None)
+    cache_key = f"open-webui:chat:tags:{user.id}:{id}"
     if chat:
         Chats.delete_all_tags_by_id_and_user_id(id, user.id)
 
@@ -814,6 +851,8 @@ async def delete_all_tags_by_id(id: str, user=Depends(get_verified_user)):
             if Chats.count_chats_by_tag_name_and_user_id(tag, user.id) == 0:
                 Tags.delete_tag_by_name_and_user_id(tag, user.id)
 
+        if redis:
+            redis.delete(cache_key)
         return True
     else:
         raise HTTPException(
