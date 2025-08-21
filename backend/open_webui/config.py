@@ -897,8 +897,14 @@ OPENAI_API_BASE_URLS = PersistentConfig(
 OPENAI_API_CONFIGS = PersistentConfig(
     "OPENAI_API_CONFIGS",
     "openai.api_configs",
-    {},
+    {
+        "https://dashscope-intl.aliyuncs.com/compatible-mode/v1": {
+            "enable": True,
+            "model_ids": ["qwen3-coder-plus", "qwen-max", "qwen-plus", "qwen-turbo", "qwen-plus-latest", "qwen3-coder-flash", "qwen-flash", "qwen-mt-turbo", "qwen3-30b-a3b"]
+        }
+    },
 )
+
 
 # Get the actual OpenAI API key based on the base URL
 OPENAI_API_KEY = ""
