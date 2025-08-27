@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+redis
+sse-starlette
+httpx
+prometheus-fastapi-instrumentator
+prometheus_client
+PyJWT
+sqlalchemy>=2.0
+aiosqlite ; platform_system != "Windows" or platform_system == "Windows"
