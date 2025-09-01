@@ -119,7 +119,8 @@
 		await tick();
 		const logo = document.getElementById('logo');
 
-		if (logo) {
+		if (logo && logo.tagName === 'IMG') {
+			const imgElement = /** @type {HTMLImageElement} */ (logo);
 			const isDarkMode = document.documentElement.classList.contains('dark');
 
 			if (isDarkMode) {
@@ -127,12 +128,12 @@
 				darkImage.src = '/static/favicon-dark.png';
 
 				darkImage.onload = () => {
-					logo.src = '/static/favicon-dark.png';
-					logo.style.filter = ''; // Ensure no inversion is applied if favicon-dark.png exists
+					imgElement.src = '/static/favicon-dark.png';
+					imgElement.style.filter = ''; // Ensure no inversion is applied if favicon-dark.png exists
 				};
 
 				darkImage.onerror = () => {
-					logo.style.filter = 'invert(1)'; // Invert image if favicon-dark.png is missing
+					imgElement.style.filter = 'invert(1)'; // Invert image if favicon-dark.png is missing
 				};
 			}
 		}
