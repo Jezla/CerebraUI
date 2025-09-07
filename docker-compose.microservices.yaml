@@ -49,6 +49,22 @@ services:
       retries: 3
       start_period: 40s
 
+  # Langflow Service - AI Workflow Builder
+  langflow:
+    image: langflowai/langflow:latest
+    pull_policy: always
+    container_name: langflow
+    restart: unless-stopped
+    ports:
+      - "7860:7860"
+    environment:
+      - LANGFLOW_DATABASE_URL=${LANGFLOW_DATABASE_URL}
+      - LANGFLOW_CONFIG_DIR=app/langflow
+    volumes:
+      - langflow-data:/app/langflow
+    networks:
+      - openwebui-network
+
   # Redis Service
   redis:
     image: redis:7-alpine
@@ -87,3 +103,4 @@ volumes:
   ollama: {}
   open-webui-backend: {}
   redis-data: {}
+  langflow-data: {}
