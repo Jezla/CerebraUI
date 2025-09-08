@@ -36,7 +36,7 @@ services:
       - 'ENABLE_SIGNUP=${ENABLE_SIGNUP:-true}'
       - 'ENABLE_PERSISTENT_CONFIG=${ENABLE_PERSISTENT_CONFIG:-false}'
       - 'REDIS_URL=${REDIS_URL:-}'
-      #- 'DATABASE_URL=${DATABASE_URL:-}'
+      - 'DATABASE_URL=${DATABASE_URL:-}'
     extra_hosts:
       - host.docker.internal:host-gateway
     networks:
