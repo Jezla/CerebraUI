@@ -6,7 +6,7 @@
 	import { page } from '$app/stores';
 
 	import { getBackendConfig } from '$lib/apis';
-	import { ldapUserSignIn, getSessionUser, userSignIn, userSignUp } from '$lib/apis/auths';
+	import { ldapUserSignIn, getSessionUser, userSignIn, userSignUp, sendEmail } from '$lib/apis/auths';
 
 	import { WEBUI_API_BASE_URL, WEBUI_BASE_URL } from '$lib/constants';
 	import { WEBUI_NAME, config, user, socket } from '$lib/stores';
@@ -15,6 +15,7 @@
 
 	import Spinner from '$lib/components/common/Spinner.svelte';
 	import OnBoarding from '$lib/components/OnBoarding.svelte';
+	import { resetUploadDir } from '$lib/apis/retrieval';
 
 	const i18n = getContext('i18n');
 
@@ -79,14 +80,32 @@
 		await setSessionUser(sessionUser);
 	};
 
+	const resetPasswordHandler = async () => {
+		try {
+			let res = await sendEmail(email);
+			console.log(res); 
+			if (sessionStorage.getItem('token')!==null) {
+				sessionStorage.removeItem('token');
+			}
+			sessionStorage.setItem('token', res.token);
+			goto(`/verify?email=${email}`);
+			toast.success("Email sent if the email address exists, please check your email");
+		} catch (error) {
+			console.log(error);
+			toast.error(`${error.detail}`);
+		}
+	};
+
 	const submitHandler = async () => {
 		if (mode === 'ldap') {
 			await ldapSignInHandler();
 		} else if (mode === 'signin') {
 			await signInHandler();
+		} else if (mode === 'reset') {
+			await resetPasswordHandler();
 		} else {
 			await signUpHandler();
-		}
+		} 
 	};
 
 	const checkOauthCallback = async () => {
@@ -219,6 +238,7 @@
 							}}
 						>
 							<div class="mb-1">
+								<!-- 表单上方标语 -->
 								<div class=" text-2xl font-medium">
 									{#if $config?.onboarding ?? false}
 										{$i18n.t(`Get started with {{WEBUI_NAME}}`, { WEBUI_NAME: $WEBUI_NAME })}
@@ -226,11 +246,13 @@
 										{$i18n.t(`Sign in to {{WEBUI_NAME}} with LDAP`, { WEBUI_NAME: $WEBUI_NAME })}
 									{:else if mode === 'signin'}
 										{$i18n.t(`Sign in to {{WEBUI_NAME}}`, { WEBUI_NAME: $WEBUI_NAME })}
+									{:else if mode === 'reset'}
+										{$i18n.t(`Reset password`)}
 									{:else}
 										{$i18n.t(`Sign up to {{WEBUI_NAME}}`, { WEBUI_NAME: $WEBUI_NAME })}
 									{/if}
 								</div>
-
+								<!-- 初始化网站时 -->
 								{#if $config?.onboarding ?? false}
 									<div class=" mt-1 text-xs font-medium text-gray-500">
 										ⓘ {$WEBUI_NAME}
@@ -240,7 +262,7 @@
 									</div>
 								{/if}
 							</div>
-
+							<!-- ldap登录启用 -->
 							{#if $config?.features.enable_login_form || $config?.features.enable_ldap}
 								<div class="flex flex-col mt-4">
 									{#if mode === 'signup'}
@@ -256,8 +278,21 @@
 											/>
 										</div>
 									{/if}
-
-									{#if mode === 'ldap'}
+									<!-- 重置密码模式 -->
+									{#if mode === 'reset'}
+										<div class="mb-2">
+											<div class=" text-sm font-medium text-left mb-1">{$i18n.t('Email')}</div>
+											<input
+												bind:value={email}
+												type="email"
+												class="my-0.5 w-full text-sm outline-hidden bg-transparent"
+												autocomplete="email"
+												name="email"
+												placeholder={$i18n.t('Enter Your Email')}
+												required
+											/>
+										</div>
+									{:else if mode === 'ldap'}
 										<div class="mb-2">
 											<div class=" text-sm font-medium text-left mb-1">{$i18n.t('Username')}</div>
 											<input
@@ -284,10 +319,10 @@
 											/>
 										</div>
 									{/if}
-
+									<!-- 如果不是重置密码模式 则不显示password框 -->
+									{#if mode !== 'reset'}
 									<div>
 										<div class=" text-sm font-medium text-left mb-1">{$i18n.t('Password')}</div>
-
 										<input
 											bind:value={password}
 											type="password"
@@ -298,6 +333,7 @@
 											required
 										/>
 									</div>
+									{/if}
 								</div>
 							{/if}
 							<div class="mt-5">
@@ -310,23 +346,51 @@
 											{$i18n.t('Authenticate')}
 										</button>
 									{:else}
+									<!-- 主按钮 -->
 										<button
 											class="bg-gray-700/5 hover:bg-gray-700/10 dark:bg-gray-100/5 dark:hover:bg-gray-100/10 dark:text-gray-300 dark:hover:text-white transition w-full rounded-full font-medium text-sm py-2.5"
 											type="submit"
 										>
 											{mode === 'signin'
 												? $i18n.t('Sign in')
-												: ($config?.onboarding ?? false)
+												: ($config?.onboarding ?? false )
 													? $i18n.t('Create Admin Account')
+													: mode === 'reset'
+													? $i18n.t('Send email')
 													: $i18n.t('Create Account')}
 										</button>
-
-										{#if $config?.features.enable_signup && !($config?.onboarding ?? false)}
+										{#if mode === 'signin'}
+											<button
+												class=" font-medium underline"
+												type="button"
+												on:click={() => {
+													mode = 'reset';
+												}}
+											>
+												{$i18n.t('Forgot password?')}
+											</button>
+										{/if}
+										<!-- 重置密码模式下方返回登录按钮 -->
+										{#if mode === 'reset'}
+										<div class=" mt-4 text-sm text-center">
+											{$i18n.t('Remembered your password?')}
+										</div>
+											<button
+												class=" font-medium underline"
+												type="button"
+												on:click={() => {
+													mode = 'signin';
+												}}
+											>
+												 {$i18n.t('Sign in')}
+											</button>
+										{/if}
+										<!-- 注册按钮 -->
+										{#if $config?.features.enable_signup && !($config?.onboarding ?? false) && mode !== 'reset'}
 											<div class=" mt-4 text-sm text-center">
 												{mode === 'signin'
 													? $i18n.t("Don't have an account?")
 													: $i18n.t('Already have an account?')}
-
 												<button
 													class=" font-medium underline"
 													type="button"

@@ -283,7 +283,9 @@ def validate_email_format(email: str) -> bool:
 
     return bool(re.match(r"[^@]+@[^@]+\.[^@]+", email))
 
-
+def validate_otp_format(otp: str) -> bool:
+    return bool(re.match(r"^\d{6}$", otp))
+    
 def sanitize_filename(file_name):
     # Convert to lowercase
     lower_case_file_name = file_name.lower()

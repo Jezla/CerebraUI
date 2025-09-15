@@ -4,11 +4,12 @@ import time
 import datetime
 import logging
 from aiohttp import ClientSession
-
+from open_webui.models.otp import Otp
 from open_webui.models.auths import (
     AddUserForm,
     ApiKey,
     Auths,
+    EmailResponse,
     Token,
     LdapForm,
     SigninForm,
@@ -17,6 +18,10 @@ from open_webui.models.auths import (
     UpdatePasswordForm,
     UpdateProfileForm,
     UserResponse,
+)
+from open_webui.models.otp import (
+    verifyOtpForm, 
+    verifyTokenForm
 )
 from open_webui.models.users import Users
 
@@ -34,7 +39,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import RedirectResponse, Response
 from open_webui.config import OPENID_PROVIDER_URL, ENABLE_OAUTH_SIGNUP, ENABLE_LDAP
 from pydantic import BaseModel
-from open_webui.utils.misc import parse_duration, validate_email_format
+from open_webui.utils.misc import parse_duration, validate_email_format, validate_otp_format
 from open_webui.utils.auth import (
     create_api_key,
     create_token,
@@ -42,6 +47,9 @@ from open_webui.utils.auth import (
     get_verified_user,
     get_current_user,
     get_password_hash,
+    send_email,
+    verify_otp,
+    verify_otp_token,
 )
 from open_webui.utils.webhook import post_webhook
 from open_webui.utils.access_control import get_permissions
@@ -577,6 +585,58 @@ async def signout(request: Request, response: Response):
 
 
 ############################
+# PasswordReset
+############################
+
+
+@router.post("/send_reset_email")
+async def send_reset_email(data: EmailResponse):
+    # validate email format
+    if not validate_email_format(data.email.lower()):
+        raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_EMAIL_FORMAT)
+    # check if email exists
+    if Users.get_user_by_email(data.email.lower()) == None:
+        return {"received_email": data.email, "otp": None}
+    # send email
+    try:
+        otp_model = send_email(data.email)
+    except Exception as e:
+        print(e)
+        raise HTTPException(500, detail=f"Failed to send email: {e}")
+    return {"received_email": data.email, "otp": otp_model.otp, "token": otp_model.token}
+
+@router.post("/verify_otp")
+async def otp_verification(data: verifyOtpForm):
+    # validate email format
+    if not validate_email_format(data.email.lower()):
+        raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_EMAIL_FORMAT)
+    if not validate_otp_format(data.otp):
+        raise HTTPException(400, detail="OTP is Wrong. 格式不对")
+    # check if email exists, if email not exists, otp is none.
+    if data.otp == None:
+        raise HTTPException(400, detail="OTP is Wrong. otp为空")
+    try:
+        verify_otp_token(data)
+    except Exception as e:
+        print(e)
+        raise HTTPException(400, detail=f"Failed to verify OTP token: {e}")
+    try:
+        return verify_otp(data.email, data.otp)
+    except Exception as e:
+        print(e)
+        raise HTTPException(500, detail=f"Failed to verify OTP: {e}")
+
+@router.post("/verify_otp_token")
+async def otp_token_verification(data: verifyTokenForm):
+    if not validate_email_format(data.email.lower()):
+        raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_EMAIL_FORMAT)
+    try:
+        return verify_otp_token(data)   
+    except Exception as e:
+        print(e)
+        raise HTTPException(500, detail=f"Failed to verify OTP token: {e}")
+
+############################    
 # AddUser
 ############################
 
