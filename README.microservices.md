@@ -106,14 +106,29 @@ You can customize the exposed ports of services in the `.env` file. The core beh
 
 The integration is enabled via environment variables. Follow these steps to configure it:
 
-**Step 1: Place Model Files**
+**Step 1: Prepare Directories for ComfyUI**
+
+ComfyUI requires specific host directories to be mounted for storing models and user data. Create them before starting the services:
+
+```
+# Create the necessary directories for ComfyUI volumes
+mkdir -p storage
+mkdir -p storage-models/models
+mkdir -p storage-models/hf-hub
+mkdir -p storage-models/torch-hub
+mkdir -p storage-user/input
+mkdir -p storage-user/output
+mkdir -p storage-user/workflows
+```
+
+**Step 2: Place Model Files**
  Place your downloaded model files (e.g., FLUX.1, VAEs, CLIPs) into the corresponding host directories, which are mounted into the ComfyUI container. For example:
 
 - **Checkpoints**: Place in `./comfyui/storage-models/models/checkpoints/` and `./comfyui/storage-models/models/unet/`.
 - **VAE Models**: Place in `./comfyui/storage-models/models/vae/`.
 - **CLIP Models**: Place in `./comfyui/storage-models/models/clip/`.
 
-**Step 2: Configure in Open WebUI**
+**Step 3: Configure in Open WebUI**
 
 1. Navigate to the **Admin Panel** > **Settings** > **Images** tab in Open WebUI.
 2. The **Image Generation Engine** should be set to `ComfyUI`, and the **API URL** (`http://comfyui:8188`) should be pre-filled.
