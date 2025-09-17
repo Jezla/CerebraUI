@@ -62,6 +62,21 @@ The project manages environment variables through the `.env` file. You can start
 cp .env.example .env
 ```
 
+Prepare Directories for ComfyUI.
+
+ComfyUI requires specific host directories to be mounted for storing models and user data. Create them before starting the services:
+
+```shell
+# Create the necessary directories for ComfyUI volumes
+mkdir -p storage
+mkdir -p storage-models/models
+mkdir -p storage-models/hf-hub
+mkdir -p storage-models/torch-hub
+mkdir -p storage-user/input
+mkdir -p storage-user/output
+mkdir -p storage-user/workflows
+```
+
 ### 2. Start Services
 
 Use Docker Compose to start all services with one command:
@@ -110,7 +125,7 @@ The integration is enabled via environment variables. Follow these steps to conf
 
 ComfyUI requires specific host directories to be mounted for storing models and user data. Create them before starting the services:
 
-```
+```shell
 # Create the necessary directories for ComfyUI volumes
 mkdir -p storage
 mkdir -p storage-models/models
