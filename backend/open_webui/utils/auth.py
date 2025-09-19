@@ -19,7 +19,6 @@ import random
 
 from open_webui.models.otp import Otp, otpTable, verifyTokenForm
 from open_webui.models.users import Users
-
 from open_webui.constants import ERROR_MESSAGES
 from open_webui.env import (
     WEBUI_SECRET_KEY,
@@ -379,8 +378,13 @@ def verify_otp(email: str, otp: str):
     if otp_model:
         if otp_model.otp == hashlib.sha256(otp.encode()).hexdigest():
             otpTable().mark_as_used(email)
+            token_data = {
+                "email": otp_model.email,
+                "is_used": True,
+            }
+            token = create_token(token_data, expires_delta=timedelta(minutes=10))
             print("otp校验成功")
-            return True    
+            return (True, token)
     print(f"{otp_model.otp == hashlib.sha256(otp.encode()).hexdigest()}")
     print("otp校验失败")
     return False
@@ -398,3 +402,31 @@ def verify_otp_token(data: verifyTokenForm):
     except Exception as e:
         print(e)
         raise HTTPException(400, detail=f"Failed to verify OTP token: {e}")
+
+def verify_reset_token(data: verifyTokenForm):
+    token = data.token
+    email = data.email
+    try:
+        decoded_token = jwt.decode(token, SESSION_SECRET, algorithms=[ALGORITHM])
+        if email != decoded_token.get("email"):
+            raise HTTPException(400, detail="Email is Wrong. email不匹配")
+        elif not decoded_token.get("is_used"):
+            raise HTTPException(400, detail="Token 不正确")
+        else:
+            print("token校验成功")
+            return True
+    except Exception as e:
+        print(e)
+        raise HTTPException(400, detail=f"Failed to verify OTP token: {e}")
+
+def update_user_password_by_email(email:str, new_password:str):
+    try:
+        user = Users.get_user_by_email(email)
+    except Exception as e:
+        raise HTTPException(400, detail=f"Failed to get user by email: {e}")
+    try:
+        from open_webui.models.auths import Auths
+        return Auths.update_user_password_by_id(user.id, new_password)
+    except Exception as e:
+        print(e)
+        raise HTTPException(400, detail=f"Failed to update user password by id: {e}")

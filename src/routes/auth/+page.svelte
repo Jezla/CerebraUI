@@ -88,7 +88,11 @@
 				sessionStorage.removeItem('token');
 			}
 			sessionStorage.setItem('token', res.token);
-			goto(`/verify?email=${email}`);
+			if (sessionStorage.getItem('email')!==null) {
+				sessionStorage.removeItem('email');
+			}
+			sessionStorage.setItem('email', email);
+			goto(`/verify`);
 			toast.success("Email sent if the email address exists, please check your email");
 		} catch (error) {
 			console.log(error);

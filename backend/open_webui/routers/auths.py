@@ -4,7 +4,7 @@ import time
 import datetime
 import logging
 from aiohttp import ClientSession
-from open_webui.models.otp import Otp
+from open_webui.models.otp import Otp, ResetPasswordForm
 from open_webui.models.auths import (
     AddUserForm,
     ApiKey,
@@ -21,7 +21,8 @@ from open_webui.models.auths import (
 )
 from open_webui.models.otp import (
     verifyOtpForm, 
-    verifyTokenForm
+    verifyTokenForm,
+    ResetPasswordForm
 )
 from open_webui.models.users import Users
 
@@ -50,6 +51,8 @@ from open_webui.utils.auth import (
     send_email,
     verify_otp,
     verify_otp_token,
+    verify_reset_token,
+    update_user_password_by_email
 )
 from open_webui.utils.webhook import post_webhook
 from open_webui.utils.access_control import get_permissions
@@ -159,7 +162,6 @@ async def update_password(
         raise HTTPException(400, detail=ERROR_MESSAGES.ACTION_PROHIBITED)
     if session_user:
         user = Auths.authenticate_user(session_user.email, form_data.password)
-
         if user:
             hashed = get_password_hash(form_data.new_password)
             return Auths.update_user_password_by_id(user.id, hashed)
@@ -381,7 +383,6 @@ async def signin(request: Request, response: Response, form_data: SigninForm):
         user = Auths.authenticate_user(form_data.email.lower(), form_data.password)
 
     if user:
-
         expires_delta = parse_duration(request.app.state.config.JWT_EXPIRES_IN)
         expires_at = None
         if expires_delta:
@@ -585,7 +586,7 @@ async def signout(request: Request, response: Response):
 
 
 ############################
-# PasswordReset
+# Email Authentication Service
 ############################
 
 
@@ -635,6 +636,47 @@ async def otp_token_verification(data: verifyTokenForm):
     except Exception as e:
         print(e)
         raise HTTPException(500, detail=f"Failed to verify OTP token: {e}")
+
+@router.post("/verify_reset_token")
+async def otp_token_verification(data: verifyTokenForm):
+    if not validate_email_format(data.email.lower()):   
+        raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_EMAIL_FORMAT)
+    try:
+        return verify_reset_token(data)   
+    except Exception as e:
+        print(e)
+        raise HTTPException(500, detail=f"Failed to verify OTP token: {e}")
+
+
+############################
+# Password Reset
+############################
+
+@router.post("/resetPassword")
+async def reset_password(data: ResetPasswordForm):
+    if not validate_email_format(data.email.lower()):
+        raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_EMAIL_FORMAT)
+    try:
+        verify_reset_token(verifyTokenForm(email=data.email, token=data.token))
+    except Exception as e:
+        print(e)
+        raise HTTPException(500, detail=f"Failed to verify reset token: {e}")
+    if len(data.new_password.encode("utf-8")) > 72:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail=ERROR_MESSAGES.PASSWORD_TOO_LONG,
+        )
+    hashed = get_password_hash(data.new_password)
+    try:
+        user = update_user_password_by_email(data.email, hashed)
+    except Exception as e:
+        print(e)
+        raise HTTPException(500, detail=f"Failed to update user password: {e}")
+    if user:
+        return True
+    else:
+        return False
+    
 
 ############################    
 # AddUser

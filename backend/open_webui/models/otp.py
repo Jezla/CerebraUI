@@ -44,6 +44,12 @@ class verifyOtpForm(BaseModel):
 class verifyTokenForm(BaseModel):
     email: str
     token: str
+
+class ResetPasswordForm(BaseModel):
+    email: str
+    new_password: str
+    token: str
+
 ####################
 # OTP Table
 ####################

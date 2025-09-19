@@ -6,7 +6,7 @@
 	import { goto } from '$app/navigation';
 
 	let code = ['', '', '', '', '', ''];
-	let email = $page.url.searchParams.get('email');
+	let email = sessionStorage.getItem('email');
 	let resendSeconds = 10;
 	let input0, input1, input2, input3, input4, input5;
 	let inputs;
@@ -15,6 +15,13 @@
 	onMount(() => {
 		inputs = [input0, input1, input2, input3, input4, input5];
 		if (inputs[0]) inputs[0].focus();
+		if (email == null){
+			goto('/auth');
+			return;
+		}
+		if (sessionStorage.getItem('rt') != null){
+			sessionStorage.removeItem('rt');
+		}
 		let token = sessionStorage.getItem('token');
 		verifySessionHandler(email, token);
 		startCountdown();
@@ -53,7 +60,14 @@
 		}
 		try {
 			const res = await verifyOtp(email, code, token);
-			console.log(res);
+			console.log("验证otp结果：",res);
+			if (res[0] == true){
+				sessionStorage.setItem('rt', res[1]);
+				goto(`/verify/reset`)
+			} else {
+				toast.error("验证失败");
+			}
+			
 		} catch (error) {
 			console.log(error);
 			toast.error(`${error}`);
