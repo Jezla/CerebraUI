@@ -1544,9 +1544,3 @@ class CustomCORSMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(CustomCORSMiddleware)
 
-
-
-
-
-
-
