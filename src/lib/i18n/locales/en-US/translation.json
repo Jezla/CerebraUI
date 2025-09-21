@@ -898,6 +898,7 @@
 	"References from": "",
 	"Refused when it shouldn't have": "",
 	"Regenerate": "",
+	"Remembered your password?": "Remembered your password?",
 	"Reindex": "",
 	"Reindex Knowledge Base Vectors": "",
 	"Release Notes": "",
@@ -1262,5 +1263,11 @@
 	"Your entire contribution will go directly to the plugin developer; Open WebUI does not take any percentage. However, the chosen funding platform might have its own fees.": "",
 	"Youtube": "",
 	"Youtube Language": "",
-	"Youtube Proxy URL": ""
+	"Youtube Proxy URL": "",
+	"Your Email: ": "",
+	"We sent you a 6-character code to verify your email address": "",
+	"Enter the 6-character code sent to your email": "",
+	"Verify Email": "",
+	"Resend code": "",
+	"Invalid session": ""
 }

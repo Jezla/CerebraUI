@@ -105,7 +105,6 @@ class otpTable:
             with get_db() as db:
                 result = db.query(OtpModel).filter_by(email=email).update({
                     "otp": otp, 
-                    "attempts": 0,
                     "token": token
                 })
                 db.commit()

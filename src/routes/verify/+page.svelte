@@ -1,6 +1,5 @@
 <script>
 	import { onMount, onDestroy, getContext } from 'svelte';
-	import { page } from '$app/stores';
 	import { verifyOtp, verifyToken, sendEmail } from '$lib/apis/auths';
 	import { toast } from 'svelte-sonner';
 	import { goto } from '$app/navigation';
@@ -36,16 +35,18 @@
 		console.log("开始检查token...");
 		if (!token) {
 			console.log("token为空");
-			toast.error("Invalid session");
+			toast.error($i18n.t('Invalid session'));
 			goto('/auth');
 			return;
 		}
 		const res = await verifyToken(email,token);
 		console.log("验证token结果：",res);
 		if(res == true){
-			toast.success("Token验证成功");
+			toast.success($i18n.t('Token verification successful'));
 		}else{
-			toast.error("会话过期");
+			toast.error($i18n.t('Session expired'));
+			sessionStorage.removeItem('token');
+			sessionStorage.removeItem('email');
 			goto('/auth');
 		}	
 	}
@@ -65,12 +66,12 @@
 				sessionStorage.setItem('rt', res[1]);
 				goto(`/verify/reset`)
 			} else {
-				toast.error("验证失败");
+				toast.error($i18n.t('Verification failed'));
 			}
 			
 		} catch (error) {
 			console.log(error);
-			toast.error(`${error}`);
+			toast.error(`${error.detail}`);
 		}
 	}
 
@@ -79,6 +80,10 @@
 		try {
 			console.log("email:",email);
 			const res = await sendEmail(email);
+			if (res.status === 400) {
+				toast.error($i18n.t('You have reached the maximum number of attempts. Please try again later.'));
+				return;
+			}
 			if (sessionStorage.getItem('token')!==null) {
 				sessionStorage.removeItem('token');
 			}
@@ -86,7 +91,7 @@
 			console.log(res);
 		} catch (error) {
 			console.log(error);
-			toast.error(`${error}`);
+			toast.error(`${error.detail}`);
 		}
 	}
 	// 验证otp格式是否为6位数字
@@ -127,14 +132,13 @@
 
 <div class="min-h-screen flex items-center justify-center bg-black text-white">
 	<div class="w-full max-w-md p-8 text-center">
-		<h2 class="text-xl font-semibold mb-2">Account Email Verification</h2>
+		<h2 class="text-xl font-semibold mb-2">{$i18n.t('Account Email Verification')}</h2>
 		<p class="text-gray-400 text-sm mb-6">
-			We have sent a verification code to your email<br />
-			Please verify your email address to continue.
+			{$i18n.t('We sent you a 6-character code to verify your email address')}
 		</p>
 
 		<p class="text-sm mb-6">
-			Your Email: <span class="text-sm mb-6">{email}</span>
+			{$i18n.t('Your Email: ')}<span class="text-sm mb-6">{email}</span>
 		</p>
 
 		<div class="flex justify-center gap-2 mb-4">
@@ -145,6 +149,7 @@
 				bind:this={input0}
 				on:input={(e) => handleInput(e, 0)}
 				on:keydown={(e) => handleKeyDown(e, 0)}
+				autocomplete="off"
 			/>
 
 			<input
@@ -154,6 +159,7 @@
 				bind:this={input1}
 				on:input={(e) => handleInput(e, 1)}
 				on:keydown={(e) => handleKeyDown(e, 1)}
+				autocomplete="off"
 			/>
 
 			<input
@@ -163,6 +169,7 @@
 				bind:this={input2}
 				on:input={(e) => handleInput(e, 2)}
 				on:keydown={(e) => handleKeyDown(e, 2)}
+				autocomplete="off"
 			/>
 
 			<input
@@ -172,6 +179,7 @@
 				bind:this={input3}
 				on:input={(e) => handleInput(e, 3)}
 				on:keydown={(e) => handleKeyDown(e, 3)}
+				autocomplete="off"
 			/>
 
 			<input
@@ -181,6 +189,7 @@
 				bind:this={input4}
 				on:input={(e) => handleInput(e, 4)}
 				on:keydown={(e) => handleKeyDown(e, 4)}
+				autocomplete="off"
 			/>
 
 			<input
@@ -190,10 +199,11 @@
 				bind:this={input5}
 				on:input={(e) => handleInput(e, 5)}
 				on:keydown={(e) => handleKeyDown(e, 5)}
+				autocomplete="off"
 			/>
 		</div>
 
-		<p class="text-xs text-gray-500 mb-4">Enter the 6-character code sent to your email</p>
+		<p class="text-xs text-gray-500 mb-4">{$i18n.t('Enter the 6-character code sent to your email')}</p>
 
 		<div class="mt-5">
 			<button
@@ -202,7 +212,7 @@
 					verifyOtpHandler(email, String(code.join('')));
 				}}
 			>
-				Verify Email
+				{$i18n.t('Verify Email')}
 			</button>
 
 			<button
@@ -211,9 +221,9 @@
 				on:click={resendHandler}
 			>
 				{#if resendSeconds > 0}
-					Resend in {resendSeconds}s
+					{$i18n.t('Resend code')}  {resendSeconds}s
 				{:else}
-					Resend
+					{$i18n.t('Resend code')}
 				{/if}
 			</button>
 		</div>

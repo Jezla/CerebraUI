@@ -52,7 +52,8 @@ from open_webui.utils.auth import (
     verify_otp,
     verify_otp_token,
     verify_reset_token,
-    update_user_password_by_email
+    update_user_password_by_email,
+    check_email_attempts
 )
 from open_webui.utils.webhook import post_webhook
 from open_webui.utils.access_control import get_permissions
@@ -595,6 +596,8 @@ async def send_reset_email(data: EmailResponse):
     # validate email format
     if not validate_email_format(data.email.lower()):
         raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_EMAIL_FORMAT)
+    if check_email_attempts(data.email) >= 3:
+        raise HTTPException(400, detail=f"You have reached the maximum number of attempts. Please try again later.")
     # check if email exists
     if Users.get_user_by_email(data.email.lower()) == None:
         return {"received_email": data.email, "otp": None}

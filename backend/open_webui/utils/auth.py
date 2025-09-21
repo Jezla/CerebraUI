@@ -266,6 +266,8 @@ def get_admin_user(user=Depends(get_current_user)):
 def send_email(email: str):
     try:
         otp_model = generate_otp(email=email)
+        if otp_model is None:
+            return None
     except Exception as e:
         print(e)
         raise HTTPException(500, detail=f"Failed to generate OTP: {e}")
@@ -325,11 +327,6 @@ def send_email(email: str):
         </html>
         """,
     }
-
-    if otp_model.attempts < 3:
-        otpTable().increment_attempts(email)
-    if otp_model.attempts >= 3:
-        raise HTTPException(400, detail=f"You have reached the maximum number of attempts.")
     try:
         resend.Emails.send(params)
     except Exception as e:
@@ -355,7 +352,25 @@ def generate_otp(email: str):
     token = create_token(token_data, expires_delta=timedelta(minutes=10))
     otp_model.token = hashlib.sha256(token.encode()).hexdigest()
     try:
-        otpTable().insert_new_otp(otp_model.email, otp_model.otp, otp_model.token) 
+        is_user_exist = Users.get_user_by_email(otp_model.email)
+        if not is_user_exist:
+            return None
+    except Exception as e:
+        print(e)
+        raise HTTPException(500, detail=f"Failed to get user by email: {e}")
+    # 如果一个email已经尝试过了邮件发送 则生成新otp 更新otp和token后再更新表
+    try:
+        otp_exist = otpTable().get_otp_by_email(email)
+        if otp_exist:
+            if otp_exist.attempts < 3:
+                otpTable().update_otp_by_email(email, otp_model.otp, otp_model.token)
+                otpTable().increment_attempts(email)
+            else:
+                raise HTTPException(400, detail="You have reached the maximum number of attempts. Please try again later.")
+        else:
+            otpTable().insert_new_otp(email, otp_model.otp, otp_model.token)
+            otpTable().increment_attempts(email)
+    # 如果用户达到了尝试次数 就会被限制 没办法再请求邮件 
     except Exception as e:
         print(e)
         raise HTTPException(500, detail=f"Failed to save OTP to database: {e}")
@@ -430,3 +445,7 @@ def update_user_password_by_email(email:str, new_password:str):
     except Exception as e:
         print(e)
         raise HTTPException(400, detail=f"Failed to update user password by id: {e}")
+
+def check_email_attempts(email: str):
+    otp_record = otpTable().get_otp_by_email(email)
+    return otp_record.attempts if otp_record else 0
