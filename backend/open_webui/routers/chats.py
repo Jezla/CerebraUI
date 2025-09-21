@@ -390,7 +390,7 @@ async def get_chat_by_id(id: str, request: Request, user=Depends(get_verified_us
 
 @router.post("/{id}", response_model=Optional[ChatResponse])
 async def update_chat_by_id(
-    id: str,request: Request, form_data: ChatForm, user=Depends(get_verified_user)
+    id: str, request: Request, form_data: ChatForm, user=Depends(get_verified_user)
 ):
     redis = getattr(request.app.state.config, "_redis", None)
     chat = Chats.get_chat_by_id_and_user_id(id, user.id)
