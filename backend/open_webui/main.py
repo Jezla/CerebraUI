@@ -43,7 +43,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
-from starlette.responses import Response, StreamingResponse
+from starlette.responses import Response, StreamingResponse, FileResponse
 
 
 from open_webui.utils import logger
@@ -1246,7 +1246,7 @@ async def list_tasks_by_chat_id_endpoint(chat_id: str, user=Depends(get_verified
 
     task_ids = list_task_ids_by_chat_id(chat_id)
 
-    print(f"Task IDs for chat {chat_id}: {task_ids}")
+    # print(f"Task IDs for chat {chat_id}: {task_ids}")
     return {"task_ids": task_ids}
 
 
@@ -1414,6 +1414,7 @@ async def get_app_latest_release_version(user=Depends(get_verified_user)):
         return {"current": VERSION, "latest": VERSION}
 
 
+
 @app.get("/api/changelog")
 async def get_app_changelog():
     return {key: CHANGELOG[key] for idx, key in enumerate(CHANGELOG) if idx < 5}
@@ -1533,3 +1534,13 @@ else:
     log.warning(
         f"Frontend build directory not found at '{FRONTEND_BUILD_DIR}'. Serving API only."
     )
+
+class CustomCORSMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        if request.url.path.endswith(".png"):
+            response.headers["Access-Control-Allow-Origin"] = "*"
+        return response
+
+app.add_middleware(CustomCORSMiddleware)
+
