@@ -138,3 +138,8 @@ opentelemetry-instrumentation-requests==0.52b1
 opentelemetry-instrumentation-logging==0.52b1
 opentelemetry-instrumentation-httpx==0.52b1
 opentelemetry-instrumentation-aiohttp-client==0.52b1
+
+
+## crawl4ai
+crawl4ai>=0.7.0
+playwright>=1.49  # optional，optional, but recommended; Crawl4AI requires a browser for better stability
