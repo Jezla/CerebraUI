@@ -358,7 +358,7 @@ def generate_otp(email: str):
     except Exception as e:
         print(e)
         raise HTTPException(500, detail=f"Failed to get user by email: {e}")
-    # 如果一个email已经尝试过了邮件发送 则生成新otp 更新otp和token后再更新表
+    # If an email has already tried to send an email, generate a new OTP and update the OTP and token in the table
     try:
         otp_exist = otpTable().get_otp_by_email(email)
         if otp_exist:
@@ -370,7 +370,7 @@ def generate_otp(email: str):
         else:
             otpTable().insert_new_otp(email, otp_model.otp, otp_model.token)
             otpTable().increment_attempts(email)
-    # 如果用户达到了尝试次数 就会被限制 没办法再请求邮件 
+    # If the user has reached the maximum number of attempts, they will be limited and unable to request an email again
     except Exception as e:
         print(e)
         raise HTTPException(500, detail=f"Failed to save OTP to database: {e}")
@@ -398,10 +398,10 @@ def verify_otp(email: str, otp: str):
                 "is_used": True,
             }
             token = create_token(token_data, expires_delta=timedelta(minutes=10))
-            print("otp校验成功")
+            print("otp verification successful")
             return (True, token)
     print(f"{otp_model.otp == hashlib.sha256(otp.encode()).hexdigest()}")
-    print("otp校验失败")
+    print("otp verification failed")
     return False
 
 def verify_otp_token(data: verifyTokenForm):
@@ -410,9 +410,9 @@ def verify_otp_token(data: verifyTokenForm):
     try:
         decoded_token = jwt.decode(token, SESSION_SECRET, algorithms=[ALGORITHM])
         if email != decoded_token.get("email"):
-            raise HTTPException(400, detail="Email is Wrong. email不匹配")
+            raise HTTPException(400, detail="Email is Wrong. email does not match")
         else:
-            print("token校验成功")
+            print("token verification successful")
             return True
     except Exception as e:
         print(e)
@@ -424,11 +424,11 @@ def verify_reset_token(data: verifyTokenForm):
     try:
         decoded_token = jwt.decode(token, SESSION_SECRET, algorithms=[ALGORITHM])
         if email != decoded_token.get("email"):
-            raise HTTPException(400, detail="Email is Wrong. email不匹配")
+            raise HTTPException(400, detail="Email is Wrong. email does not match")
         elif not decoded_token.get("is_used"):
-            raise HTTPException(400, detail="Token 不正确")
+            raise HTTPException(400, detail="Token is Wrong. token is used")
         else:
-            print("token校验成功")
+            print("token verification successful")
             return True
     except Exception as e:
         print(e)
