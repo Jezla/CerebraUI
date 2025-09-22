@@ -105,9 +105,8 @@ for source in log_sources:
 
 log.setLevel(SRC_LOG_LEVELS["CONFIG"])
 
-WEBUI_NAME = os.environ.get("WEBUI_NAME", "Open WebUI")
-if WEBUI_NAME != "Open WebUI":
-    WEBUI_NAME += " (Open WebUI)"
+WEBUI_NAME = os.environ.get("WEBUI_NAME", "CerebraUI")
+
 
 WEBUI_FAVICON_URL = "https://openwebui.com/favicon.png"
 
@@ -339,6 +338,11 @@ try:
 except ValueError:
     UVICORN_WORKERS = 1
     log.info(f"Invalid UVICORN_WORKERS value, defaulting to {UVICORN_WORKERS}")
+
+####################################
+# RESEND
+####################################
+RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
 
 ####################################
 # WEBUI_AUTH (Required for security)

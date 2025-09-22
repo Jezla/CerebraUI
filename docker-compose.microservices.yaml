@@ -1,0 +1,106 @@
+services:
+  # Frontend Service - Nginx serving static files
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    image: openwebui-frontend:latest
+    container_name: open-webui-frontend
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    depends_on:
+      - backend
+    networks:
+      - openwebui-network
+    restart: unless-stopped
+    
+  # Backend Service - Python API
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+      args:
+        OLLAMA_BASE_URL: '/ollama'
+    image: openwebui-backend:latest
+    container_name: open-webui-backend
+    volumes:
+      - open-webui-backend:/app/backend/data
+    depends_on:
+      - ollama
+      - redis
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    environment:
+      - 'OLLAMA_BASE_URL=http://ollama:11434'
+      - 'WEBUI_SECRET_KEY='
+      - 'ENABLE_SIGNUP=${ENABLE_SIGNUP:-true}'
+      - 'ENABLE_PERSISTENT_CONFIG=${ENABLE_PERSISTENT_CONFIG:-false}'
+      - 'REDIS_URL=${REDIS_URL:-}'
+      - 'DATABASE_URL=${DATABASE_URL:-}'
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    networks:
+      - openwebui-network  
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Langflow Service - AI Workflow Builder
+  langflow:
+    image: langflowai/langflow:latest
+    pull_policy: always
+    container_name: langflow
+    restart: unless-stopped
+    ports:
+      - "7860:7860"
+    environment:
+      - LANGFLOW_DATABASE_URL=${LANGFLOW_DATABASE_URL}
+      - LANGFLOW_CONFIG_DIR=app/langflow
+    volumes:
+      - langflow-data:/app/langflow
+    networks:
+      - openwebui-network
+
+  # Redis Service
+  redis:
+    image: redis:7-alpine
+    container_name: openwebui-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes --save 60 1000
+    restart: unless-stopped
+    networks:
+      - openwebui-network  
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # AI Model Service - Ollama
+  ollama:
+    volumes:
+      - ollama:/root/.ollama
+    container_name: ollama
+    pull_policy: always
+    tty: true
+    restart: unless-stopped
+    image: ollama/ollama:${OLLAMA_DOCKER_TAG-latest}
+    networks:
+      - openwebui-network
+
+networks:
+  openwebui-network:
+    driver: bridge
+
+volumes:
+  ollama: {}
+  open-webui-backend: {}
+  redis-data: {}
+  langflow-data: {}

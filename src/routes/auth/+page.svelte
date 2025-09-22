@@ -6,7 +6,13 @@
 	import { page } from '$app/stores';
 
 	import { getBackendConfig } from '$lib/apis';
-	import { ldapUserSignIn, getSessionUser, userSignIn, userSignUp } from '$lib/apis/auths';
+	import {
+		ldapUserSignIn,
+		getSessionUser,
+		userSignIn,
+		userSignUp,
+		sendEmail
+	} from '$lib/apis/auths';
 
 	import { WEBUI_API_BASE_URL, WEBUI_BASE_URL } from '$lib/constants';
 	import { WEBUI_NAME, config, user, socket } from '$lib/stores';
@@ -47,7 +53,11 @@
 			await config.set(await getBackendConfig());
 
 			const redirectPath = querystringValue('redirect') || '/';
-			goto(redirectPath);
+			if (redirectPath.includes('/verify') || redirectPath.includes('/reset')) {
+				goto('/');
+			} else {
+				goto(redirectPath);
+			}
 		}
 	};
 
@@ -79,11 +89,33 @@
 		await setSessionUser(sessionUser);
 	};
 
+	const resetPasswordHandler = async () => {
+		try {
+			let res = await sendEmail(email);
+			console.log(res);
+			if (sessionStorage.getItem('token') !== null) {
+				sessionStorage.removeItem('token');
+			}
+			sessionStorage.setItem('token', res.token);
+			if (sessionStorage.getItem('email') !== null) {
+				sessionStorage.removeItem('email');
+			}
+			sessionStorage.setItem('email', email);
+			goto(`/verify`);
+			toast.success('Email sent if the email address exists, please check your email');
+		} catch (error) {
+			console.log(error);
+			toast.error(`${error.detail}`);
+		}
+	};
+
 	const submitHandler = async () => {
 		if (mode === 'ldap') {
 			await ldapSignInHandler();
 		} else if (mode === 'signin') {
 			await signInHandler();
+		} else if (mode === 'reset') {
+			await resetPasswordHandler();
 		} else {
 			await signUpHandler();
 		}
@@ -119,7 +151,8 @@
 		await tick();
 		const logo = document.getElementById('logo');
 
-		if (logo) {
+		if (logo && logo.tagName === 'IMG') {
+			const imgElement = /** @type {HTMLImageElement} */ (logo);
 			const isDarkMode = document.documentElement.classList.contains('dark');
 
 			if (isDarkMode) {
@@ -127,12 +160,12 @@
 				darkImage.src = '/static/favicon-dark.png';
 
 				darkImage.onload = () => {
-					logo.src = '/static/favicon-dark.png';
-					logo.style.filter = ''; // Ensure no inversion is applied if favicon-dark.png exists
+					imgElement.src = '/static/favicon-dark.png';
+					imgElement.style.filter = ''; // Ensure no inversion is applied if favicon-dark.png exists
 				};
 
 				darkImage.onerror = () => {
-					logo.style.filter = 'invert(1)'; // Invert image if favicon-dark.png is missing
+					imgElement.style.filter = 'invert(1)'; // Invert image if favicon-dark.png is missing
 				};
 			}
 		}
@@ -212,12 +245,13 @@
 					<div class="  my-auto pb-10 w-full dark:text-gray-100">
 						<form
 							class=" flex flex-col justify-center"
-							on:submit={(e) => {
+							on:submit|once={(e) => {
 								e.preventDefault();
 								submitHandler();
 							}}
 						>
 							<div class="mb-1">
+								<!-- Form above the slogan -->
 								<div class=" text-2xl font-medium">
 									{#if $config?.onboarding ?? false}
 										{$i18n.t(`Get started with {{WEBUI_NAME}}`, { WEBUI_NAME: $WEBUI_NAME })}
@@ -225,11 +259,13 @@
 										{$i18n.t(`Sign in to {{WEBUI_NAME}} with LDAP`, { WEBUI_NAME: $WEBUI_NAME })}
 									{:else if mode === 'signin'}
 										{$i18n.t(`Sign in to {{WEBUI_NAME}}`, { WEBUI_NAME: $WEBUI_NAME })}
+									{:else if mode === 'reset'}
+										{$i18n.t(`Reset password`)}
 									{:else}
 										{$i18n.t(`Sign up to {{WEBUI_NAME}}`, { WEBUI_NAME: $WEBUI_NAME })}
 									{/if}
 								</div>
-
+								<!-- When the website is initialized -->
 								{#if $config?.onboarding ?? false}
 									<div class=" mt-1 text-xs font-medium text-gray-500">
 										ⓘ {$WEBUI_NAME}
@@ -239,7 +275,7 @@
 									</div>
 								{/if}
 							</div>
-
+							<!-- ldap login enabled -->
 							{#if $config?.features.enable_login_form || $config?.features.enable_ldap}
 								<div class="flex flex-col mt-4">
 									{#if mode === 'signup'}
@@ -255,8 +291,21 @@
 											/>
 										</div>
 									{/if}
-
-									{#if mode === 'ldap'}
+									<!-- Reset password mode -->
+									{#if mode === 'reset'}
+										<div class="mb-2">
+											<div class=" text-sm font-medium text-left mb-1">{$i18n.t('Email')}</div>
+											<input
+												bind:value={email}
+												type="email"
+												class="my-0.5 w-full text-sm outline-hidden bg-transparent"
+												autocomplete="email"
+												name="email"
+												placeholder={$i18n.t('Enter Your Email')}
+												required
+											/>
+										</div>
+									{:else if mode === 'ldap'}
 										<div class="mb-2">
 											<div class=" text-sm font-medium text-left mb-1">{$i18n.t('Username')}</div>
 											<input
@@ -283,20 +332,21 @@
 											/>
 										</div>
 									{/if}
-
-									<div>
-										<div class=" text-sm font-medium text-left mb-1">{$i18n.t('Password')}</div>
-
-										<input
-											bind:value={password}
-											type="password"
-											class="my-0.5 w-full text-sm outline-hidden bg-transparent"
-											placeholder={$i18n.t('Enter Your Password')}
-											autocomplete="current-password"
-											name="current-password"
-											required
-										/>
-									</div>
+									<!-- If it is not the reset password mode, the password box is not displayed -->
+									{#if mode !== 'reset'}
+										<div>
+											<div class=" text-sm font-medium text-left mb-1">{$i18n.t('Password')}</div>
+											<input
+												bind:value={password}
+												type="password"
+												class="my-0.5 w-full text-sm outline-hidden bg-transparent"
+												placeholder={$i18n.t('Enter Your Password')}
+												autocomplete="current-password"
+												name="current-password"
+												required
+											/>
+										</div>
+									{/if}
 								</div>
 							{/if}
 							<div class="mt-5">
@@ -309,6 +359,7 @@
 											{$i18n.t('Authenticate')}
 										</button>
 									{:else}
+										<!-- Main button -->
 										<button
 											class="bg-gray-700/5 hover:bg-gray-700/10 dark:bg-gray-100/5 dark:hover:bg-gray-100/10 dark:text-gray-300 dark:hover:text-white transition w-full rounded-full font-medium text-sm py-2.5"
 											type="submit"
@@ -317,15 +368,45 @@
 												? $i18n.t('Sign in')
 												: ($config?.onboarding ?? false)
 													? $i18n.t('Create Admin Account')
-													: $i18n.t('Create Account')}
+													: mode === 'reset'
+														? $i18n.t('Send email')
+														: $i18n.t('Create Account')}
 										</button>
-
-										{#if $config?.features.enable_signup && !($config?.onboarding ?? false)}
+										{#if mode === 'signin'}
+											<div class="mt-4 text-sm text-center">
+												<span>{$i18n.t('Forgot password?')}</span>
+												<button
+													class="font-medium underline ml-1"
+													type="button"
+													on:click={() => {
+														mode = 'reset';
+													}}
+												>
+													{$i18n.t('Reset password')}
+												</button>
+											</div>
+										{/if}
+									<!-- Reset password mode below return login button -->
+									{#if mode === 'reset'}
+										<div class="mt-4 text-sm text-center">
+											<span>{$i18n.t('Remembered your password?')}</span>
+											<button
+												class="font-medium underline ml-1"
+												type="button"
+												on:click={() => {
+													mode = 'signin';
+												}}
+											>
+												{$i18n.t('Sign in')}
+											</button>
+										</div>
+									{/if}
+											<!-- Register button -->
+										{#if $config?.features.enable_signup && !($config?.onboarding ?? false) && mode !== 'reset'}
 											<div class=" mt-4 text-sm text-center">
 												{mode === 'signin'
 													? $i18n.t("Don't have an account?")
 													: $i18n.t('Already have an account?')}
-
 												<button
 													class=" font-medium underline"
 													type="button"
