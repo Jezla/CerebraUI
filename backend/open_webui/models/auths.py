@@ -58,6 +58,7 @@ class UserResponse(BaseModel):
 class SigninResponse(Token, UserResponse):
     pass
 
+
 class EmailResponse(BaseModel):
     email: str
 

@@ -19,11 +19,7 @@ from open_webui.models.auths import (
     UpdateProfileForm,
     UserResponse,
 )
-from open_webui.models.otp import (
-    verifyOtpForm, 
-    verifyTokenForm,
-    ResetPasswordForm
-)
+from open_webui.models.otp import verifyOtpForm, verifyTokenForm, ResetPasswordForm
 from open_webui.models.users import Users
 
 from open_webui.constants import ERROR_MESSAGES, WEBHOOK_MESSAGES
@@ -40,7 +36,11 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import RedirectResponse, Response
 from open_webui.config import OPENID_PROVIDER_URL, ENABLE_OAUTH_SIGNUP, ENABLE_LDAP
 from pydantic import BaseModel
-from open_webui.utils.misc import parse_duration, validate_email_format, validate_otp_format
+from open_webui.utils.misc import (
+    parse_duration,
+    validate_email_format,
+    validate_otp_format,
+)
 from open_webui.utils.auth import (
     create_api_key,
     create_token,
@@ -53,7 +53,7 @@ from open_webui.utils.auth import (
     verify_otp_token,
     verify_reset_token,
     update_user_password_by_email,
-    check_email_attempts
+    check_email_attempts,
 )
 from open_webui.utils.webhook import post_webhook
 from open_webui.utils.access_control import get_permissions
@@ -597,7 +597,10 @@ async def send_reset_email(data: EmailResponse):
     if not validate_email_format(data.email.lower()):
         raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_EMAIL_FORMAT)
     if check_email_attempts(data.email) >= 3:
-        raise HTTPException(400, detail=f"You have reached the maximum number of attempts. Please try again later.")
+        raise HTTPException(
+            400,
+            detail=f"You have reached the maximum number of attempts. Please try again later.",
+        )
     # check if email exists
     if Users.get_user_by_email(data.email.lower()) == None:
         return {"received_email": data.email, "otp": None}
@@ -607,7 +610,12 @@ async def send_reset_email(data: EmailResponse):
     except Exception as e:
         print(e)
         raise HTTPException(500, detail=f"Failed to send email: {e}")
-    return {"received_email": data.email, "otp": otp_model.otp, "token": otp_model.token}
+    return {
+        "received_email": data.email,
+        "otp": otp_model.otp,
+        "token": otp_model.token,
+    }
+
 
 @router.post("/verify_otp")
 async def otp_verification(data: verifyOtpForm):
@@ -630,22 +638,24 @@ async def otp_verification(data: verifyOtpForm):
         print(e)
         raise HTTPException(500, detail=f"Failed to verify OTP: {e}")
 
+
 @router.post("/verify_otp_token")
 async def otp_token_verification(data: verifyTokenForm):
     if not validate_email_format(data.email.lower()):
         raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_EMAIL_FORMAT)
     try:
-        return verify_otp_token(data)   
+        return verify_otp_token(data)
     except Exception as e:
         print(e)
         raise HTTPException(500, detail=f"Failed to verify OTP token: {e}")
 
+
 @router.post("/verify_reset_token")
 async def otp_token_verification(data: verifyTokenForm):
-    if not validate_email_format(data.email.lower()):   
+    if not validate_email_format(data.email.lower()):
         raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_EMAIL_FORMAT)
     try:
-        return verify_reset_token(data)   
+        return verify_reset_token(data)
     except Exception as e:
         print(e)
         raise HTTPException(500, detail=f"Failed to verify OTP token: {e}")
@@ -654,6 +664,7 @@ async def otp_token_verification(data: verifyTokenForm):
 ############################
 # Password Reset
 ############################
+
 
 @router.post("/resetPassword")
 async def reset_password(data: ResetPasswordForm):
@@ -679,9 +690,9 @@ async def reset_password(data: ResetPasswordForm):
         return True
     else:
         return False
-    
 
-############################    
+
+############################
 # AddUser
 ############################
 

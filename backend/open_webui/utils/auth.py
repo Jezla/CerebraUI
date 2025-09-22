@@ -366,7 +366,10 @@ def generate_otp(email: str):
                 otpTable().update_otp_by_email(email, otp_model.otp, otp_model.token)
                 otpTable().increment_attempts(email)
             else:
-                raise HTTPException(400, detail="You have reached the maximum number of attempts. Please try again later.")
+                raise HTTPException(
+                    400,
+                    detail="You have reached the maximum number of attempts. Please try again later.",
+                )
         else:
             otpTable().insert_new_otp(email, otp_model.otp, otp_model.token)
             otpTable().increment_attempts(email)
@@ -377,6 +380,7 @@ def generate_otp(email: str):
     otp_model.otp = otp
     otp_model.token = token
     return otp_model
+
 
 def verify_otp(email: str, otp: str):
     if email is not None and otp is not None:
@@ -404,6 +408,7 @@ def verify_otp(email: str, otp: str):
     print("otp verification failed")
     return False
 
+
 def verify_otp_token(data: verifyTokenForm):
     token = data.token
     email = data.email
@@ -417,6 +422,7 @@ def verify_otp_token(data: verifyTokenForm):
     except Exception as e:
         print(e)
         raise HTTPException(400, detail=f"Failed to verify OTP token: {e}")
+
 
 def verify_reset_token(data: verifyTokenForm):
     token = data.token
@@ -434,17 +440,20 @@ def verify_reset_token(data: verifyTokenForm):
         print(e)
         raise HTTPException(400, detail=f"Failed to verify OTP token: {e}")
 
-def update_user_password_by_email(email:str, new_password:str):
+
+def update_user_password_by_email(email: str, new_password: str):
     try:
         user = Users.get_user_by_email(email)
     except Exception as e:
         raise HTTPException(400, detail=f"Failed to get user by email: {e}")
     try:
         from open_webui.models.auths import Auths
+
         return Auths.update_user_password_by_id(user.id, new_password)
     except Exception as e:
         print(e)
         raise HTTPException(400, detail=f"Failed to update user password by id: {e}")
+
 
 def check_email_attempts(email: str):
     otp_record = otpTable().get_otp_by_email(email)

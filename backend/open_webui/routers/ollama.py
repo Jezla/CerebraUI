@@ -468,7 +468,9 @@ async def get_ollama_tags(
 async def get_ollama_versions(request: Request, url_idx: Optional[int] = None):
     if request.app.state.config.ENABLE_OLLAMA_API:
         redis = getattr(request.app.state.config, "_redis", None)
-        cache_key = f"open-webui:ollama:version:{url_idx if url_idx is not None else 'all'}"
+        cache_key = (
+            f"open-webui:ollama:version:{url_idx if url_idx is not None else 'all'}"
+        )
 
         if redis:
             cached_version = redis.get(cache_key)
@@ -477,7 +479,7 @@ async def get_ollama_versions(request: Request, url_idx: Optional[int] = None):
                     return json.loads(cached_version)
                 except json.JSONDecodeError:
                     redis.delete(cache_key)
-                    
+
         if url_idx is None:
             # returns lowest version
             request_tasks = []

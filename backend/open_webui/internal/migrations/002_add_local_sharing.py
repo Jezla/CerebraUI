@@ -36,7 +36,7 @@ with suppress(ImportError):
 
 def migrate(migrator: Migrator, database: pw.Database, *, fake=False):
     """Write your migrations here."""
-    
+
     migrator.add_fields(
         "chat", share_id=pw.CharField(max_length=255, null=True, unique=True)
     )
