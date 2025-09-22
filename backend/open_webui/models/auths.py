@@ -59,6 +59,10 @@ class SigninResponse(Token, UserResponse):
     pass
 
 
+class EmailResponse(BaseModel):
+    email: str
+
+
 class SigninForm(BaseModel):
     email: str
     password: str

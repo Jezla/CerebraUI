@@ -366,7 +366,7 @@ async def get_chat_by_id(id: str, request: Request, user=Depends(get_verified_us
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail=ERROR_MESSAGES.NOT_FOUND
         )
-    
+
 
 ############################
 # UpdateChatById
@@ -729,7 +729,9 @@ async def update_chat_folder_id_by_id(
 
 
 @router.get("/{id}/tags", response_model=list[TagModel])
-async def get_chat_tags_by_id(id: str, request: Request, user=Depends(get_verified_user)):
+async def get_chat_tags_by_id(
+    id: str, request: Request, user=Depends(get_verified_user)
+):
     redis = getattr(request.app.state.config, "_redis", None)
     cache_key = f"open-webui:chat:tags:{user.id}:{id}"
 
@@ -840,7 +842,9 @@ async def delete_tag_by_id_and_tag_name(
 
 
 @router.delete("/{id}/tags/all", response_model=Optional[bool])
-async def delete_all_tags_by_id(id: str, request: Request, user=Depends(get_verified_user)):
+async def delete_all_tags_by_id(
+    id: str, request: Request, user=Depends(get_verified_user)
+):
     chat = Chats.get_chat_by_id_and_user_id(id, user.id)
     redis = getattr(request.app.state.config, "_redis", None)
     cache_key = f"open-webui:chat:tags:{user.id}:{id}"
