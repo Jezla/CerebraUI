@@ -251,7 +251,7 @@
 							}}
 						>
 							<div class="mb-1">
-								<!-- 表单上方标语 -->
+								<!-- Form above the slogan -->
 								<div class=" text-2xl font-medium">
 									{#if $config?.onboarding ?? false}
 										{$i18n.t(`Get started with {{WEBUI_NAME}}`, { WEBUI_NAME: $WEBUI_NAME })}
@@ -265,7 +265,7 @@
 										{$i18n.t(`Sign up to {{WEBUI_NAME}}`, { WEBUI_NAME: $WEBUI_NAME })}
 									{/if}
 								</div>
-								<!-- 初始化网站时 -->
+								<!-- When the website is initialized -->
 								{#if $config?.onboarding ?? false}
 									<div class=" mt-1 text-xs font-medium text-gray-500">
 										ⓘ {$WEBUI_NAME}
@@ -275,7 +275,7 @@
 									</div>
 								{/if}
 							</div>
-							<!-- ldap登录启用 -->
+							<!-- ldap login enabled -->
 							{#if $config?.features.enable_login_form || $config?.features.enable_ldap}
 								<div class="flex flex-col mt-4">
 									{#if mode === 'signup'}
@@ -291,7 +291,7 @@
 											/>
 										</div>
 									{/if}
-									<!-- 重置密码模式 -->
+									<!-- Reset password mode -->
 									{#if mode === 'reset'}
 										<div class="mb-2">
 											<div class=" text-sm font-medium text-left mb-1">{$i18n.t('Email')}</div>
@@ -332,7 +332,7 @@
 											/>
 										</div>
 									{/if}
-									<!-- 如果不是重置密码模式 则不显示password框 -->
+									<!-- If it is not the reset password mode, the password box is not displayed -->
 									{#if mode !== 'reset'}
 										<div>
 											<div class=" text-sm font-medium text-left mb-1">{$i18n.t('Password')}</div>
@@ -359,7 +359,7 @@
 											{$i18n.t('Authenticate')}
 										</button>
 									{:else}
-										<!-- 主按钮 -->
+										<!-- Main button -->
 										<button
 											class="bg-gray-700/5 hover:bg-gray-700/10 dark:bg-gray-100/5 dark:hover:bg-gray-100/10 dark:text-gray-300 dark:hover:text-white transition w-full rounded-full font-medium text-sm py-2.5"
 											type="submit"
@@ -386,7 +386,7 @@
 												</button>
 											</div>
 										{/if}
-									<!-- 重置密码模式下方返回登录按钮 -->
+									<!-- Reset password mode below return login button -->
 									{#if mode === 'reset'}
 										<div class="mt-4 text-sm text-center">
 											<span>{$i18n.t('Remembered your password?')}</span>
@@ -401,7 +401,7 @@
 											</button>
 										</div>
 									{/if}
-										<!-- 注册按钮 -->
+											<!-- Register button -->
 										{#if $config?.features.enable_signup && !($config?.onboarding ?? false) && mode !== 'reset'}
 											<div class=" mt-4 text-sm text-center">
 												{mode === 'signin'

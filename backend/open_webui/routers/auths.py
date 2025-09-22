@@ -615,10 +615,10 @@ async def otp_verification(data: verifyOtpForm):
     if not validate_email_format(data.email.lower()):
         raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_EMAIL_FORMAT)
     if not validate_otp_format(data.otp):
-        raise HTTPException(400, detail="OTP is Wrong. 格式不对")
+        raise HTTPException(400, detail="OTP is Wrong. Invalid OTP format")
     # check if email exists, if email not exists, otp is none.
     if data.otp == None:
-        raise HTTPException(400, detail="OTP is Wrong. otp为空")
+        raise HTTPException(400, detail="OTP is Wrong. OTP is empty")
     try:
         verify_otp_token(data)
     except Exception as e:

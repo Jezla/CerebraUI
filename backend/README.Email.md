@@ -64,6 +64,11 @@ This PR implements a complete email verification and password reset functionalit
 5. **Input Validation**: All inputs are validated for format
 
 ## Configuration Requirements
+1. **Resend API Key**: Register an account on www.resend.com and get your own API key 
+https://resend.com/docs/introduction
+2. **Set Up your domain**: Resend needs a domain name otherwise you cannot send the email. Please follow the link blow to set up your domain.
+https://resend.com/docs/dashboard/domains/introduction
+
 
 ### Environment Variables
 ```bash

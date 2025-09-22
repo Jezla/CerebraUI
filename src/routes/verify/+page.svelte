@@ -31,16 +31,16 @@
 	});
 
 	const verifySessionHandler = async (email,token) => {
-		console.log("验证session：", email, token);
-		console.log("开始检查token...");
+		console.log("Validatesession：", email, token);
+		console.log("Start checking token...");
 		if (!token) {
-			console.log("token为空");
+			console.log("token is empty");
 			toast.error($i18n.t('Invalid session'));
 			goto('/auth');
 			return;
 		}
 		const res = await verifyToken(email,token);
-		console.log("验证token结果：",res);
+		console.log("Verify token result：",res);
 		if(res == true){
 			toast.success($i18n.t('Token verification successful'));
 		}else{
@@ -50,18 +50,18 @@
 			goto('/auth');
 		}	
 	}
-	// 验证otp
+	// Verify otp
 	const verifyOtpHandler = async (email, code) => {
 		let token = sessionStorage.getItem('token');
-		console.log("验证otp：",email, code,token);
+		console.log("Verify otp：",email, code,token);
 		if (!validateCode(code)){
-			console.log("校验检查：",validateCode(code));
+			console.log("Verify check：",validateCode(code));
 			toast.error($i18n.t('Code is not valid')); 
 			return;
 		}
 		try {
 			const res = await verifyOtp(email, code, token);
-			console.log("验证otp结果：",res);
+			console.log("Verify otp result：",res);
 			if (res[0] == true){
 				sessionStorage.setItem('rt', res[1]);
 				goto(`/verify/reset`)
@@ -78,7 +78,7 @@
 	const resendHandler = async () => { 
 		startCountdown(); 
 		try {
-			console.log("email:",email);
+			console.log("Email:",email);
 			const res = await sendEmail(email);
 			if (res.status === 400) {
 				toast.error($i18n.t('You have reached the maximum number of attempts. Please try again later.'));
@@ -94,7 +94,7 @@
 			toast.error(`${error.detail}`);
 		}
 	}
-	// 验证otp格式是否为6位数字
+	// Verify otp format is 6 digits
 	function validateCode(code) {
 		return code.length === 6 && /^\d+$/.test(code)
 	}
