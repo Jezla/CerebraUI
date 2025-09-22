@@ -25,9 +25,16 @@ services:
     environment:
       - 'OLLAMA_BASE_URL=http://ollama:11434'
       - 'WEBUI_SECRET_KEY='
+    # crawl
+      - 'WEB_LOADER_ENGINE=playwright'
     extra_hosts:
       - host.docker.internal:host-gateway
     restart: unless-stopped
+    # crawl
+    init: true
+    ipc: host
+    shm_size: "1g"
+
 
 volumes:
   ollama: {}

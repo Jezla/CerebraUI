@@ -137,11 +137,6 @@ RUN pip3 install --no-cache-dir uv && \
     # If you use CUDA the whisper and embedding model will be downloaded on first use
     pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/$USE_CUDA_DOCKER_VER --no-cache-dir && \
     uv pip install --system -r requirements.txt --no-cache-dir && \
-    # Crawl's dependency installation
-    playwright install --with-deps chromium && \
-    crawl4ai-setup -y || true && \
-    crawl4ai-doctor || true
-    
     python -c "import os; from sentence_transformers import SentenceTransformer; SentenceTransformer(os.environ['RAG_EMBEDDING_MODEL'], device='cpu')" && \
     python -c "import os; from faster_whisper import WhisperModel; WhisperModel(os.environ['WHISPER_MODEL'], device='cpu', compute_type='int8', download_root=os.environ['WHISPER_MODEL_DIR'])"; \
     python -c "import os; import tiktoken; tiktoken.get_encoding(os.environ['TIKTOKEN_ENCODING_NAME'])"; \
@@ -152,7 +147,13 @@ RUN pip3 install --no-cache-dir uv && \
     python -c "import os; from faster_whisper import WhisperModel; WhisperModel(os.environ['WHISPER_MODEL'], device='cpu', compute_type='int8', download_root=os.environ['WHISPER_MODEL_DIR'])"; \
     python -c "import os; import tiktoken; tiktoken.get_encoding(os.environ['TIKTOKEN_ENCODING_NAME'])"; \
     fi; \
-    chown -R $UID:$GID /app/backend/data/
+
+# Crawl's dependency installation
+RUN pip install --no-cache-dir crawl4ai playwright && \
+    playwright install --with-deps chromium && \
+    crawl4ai-setup -y || true && \
+    crawl4ai-doctor || true
+
 
 
 
