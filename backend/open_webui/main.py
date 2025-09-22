@@ -969,6 +969,10 @@ app.include_router(retrieval.router, prefix="/api/v1/retrieval", tags=["retrieva
 
 app.include_router(configs.router, prefix="/api/v1/configs", tags=["configs"])
 
+###crawl
+from open_webui.routers import crawl as crawl_router
+app.include_router(crawl_router.router, prefix="/api", tags=["crawl"])
+
 app.include_router(auths.router, prefix="/api/v1/auths", tags=["auths"])
 app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
 
