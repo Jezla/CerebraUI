@@ -544,7 +544,7 @@
 			</a>
 		</div>
 
-		<!-- {#if $user?.role === 'admin'}
+		<!-- {#if $user?.role === 'admin'} -->
 			<div class="px-1.5 flex justify-center text-gray-800 dark:text-gray-200">
 				<a
 					class="grow flex items-center space-x-3 rounded-lg px-2 py-[7px] hover:bg-gray-100 dark:hover:bg-gray-900 transition"
@@ -567,8 +567,32 @@
 						<div class=" self-center font-medium text-sm font-primary">{$i18n.t('Home')}</div>
 					</div>
 				</a>
+				<!-- 新增 Parallel Crawl 导航项 -->
+				<a
+					class="grow flex items-center space-x-3 rounded-lg px-2 py-[7px] hover:bg-gray-100 dark:hover:bg-gray-900 transition"
+					href="/crawl"
+					on:click={() => {
+						selectedChatId = null;
+						chatId.set('');
+						if ($mobile) { showSidebar.set(false); }
+					}}
+					draggable="false"
+				>
+					<div class="self-center">
+						<!-- 用 Globe 图标表示 Web Crawl，你可以换其他 -->
+						<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+							stroke-width="2" stroke="currentColor" class="size-[1.1rem]">
+							<path stroke-linecap="round" stroke-linejoin="round"
+								d="M12 21a9 9 0 100-18 9 9 0 000 18zm0 0c-2.5 0-4.5-4-4.5-9S9.5 3 12 3s4.5 4 4.5 9-2 9-4.5 9zm0 0c3 0 5.5-4 5.5-9S15 3 12 3"/>
+						</svg>
+					</div>
+
+					<div class="flex self-center translate-y-[0.5px]">
+						<div class=" self-center font-medium text-sm font-primary">Parallel Crawl</div>
+					</div>
+				</a>
 			</div>
-		{/if} -->
+
 
 		{#if $user?.role === 'admin' || $user?.permissions?.workspace?.models || $user?.permissions?.workspace?.knowledge || $user?.permissions?.workspace?.prompts || $user?.permissions?.workspace?.tools}
 			<div class="px-1.5 flex justify-center text-gray-800 dark:text-gray-200">
