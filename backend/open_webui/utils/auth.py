@@ -492,7 +492,11 @@ def verify_otp(email: str, otp: str, redis_client: Optional["Redis"] = None):
         if redis_client and isinstance(otp_model, dict):
             otp_model["is_used"] = True
             key_ttl = redis_client.ttl(_otp_redis_key(normalized_email))
-            _update_redis_record(redis_client, normalized_email, otp_model, ttl=key_ttl)
+            # Only set TTL if it's a positive value; otherwise, preserve current state (no expiration)
+            if key_ttl is not None and key_ttl > 0:
+                _update_redis_record(redis_client, normalized_email, otp_model, ttl=key_ttl)
+            else:
+                _update_redis_record(redis_client, normalized_email, otp_model, ttl=None)
         else:
             otpTable().mark_as_used(normalized_email)
 
