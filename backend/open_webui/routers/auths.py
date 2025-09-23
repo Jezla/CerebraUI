@@ -592,11 +592,12 @@ async def signout(request: Request, response: Response):
 
 
 @router.post("/send_reset_email")
-async def send_reset_email(data: EmailResponse):
+async def send_reset_email(data: EmailResponse, request: Request):
     # validate email format
+    redis_client = getattr(request.app.state.config, "_redis", None)
     if not validate_email_format(data.email.lower()):
         raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_EMAIL_FORMAT)
-    if check_email_attempts(data.email) >= 3:
+    if check_email_attempts(data.email, redis_client=redis_client) >= 3:
         raise HTTPException(
             400,
             detail=f"You have reached the maximum number of attempts. Please try again later.",
@@ -606,7 +607,7 @@ async def send_reset_email(data: EmailResponse):
         return {"received_email": data.email, "otp": None}
     # send email
     try:
-        otp_model = send_email(data.email)
+        otp_model = send_email(data.email, redis_client=redis_client)
     except Exception as e:
         print(e)
         raise HTTPException(500, detail=f"Failed to send email: {e}")
@@ -618,8 +619,9 @@ async def send_reset_email(data: EmailResponse):
 
 
 @router.post("/verify_otp")
-async def otp_verification(data: verifyOtpForm):
+async def otp_verification(data: verifyOtpForm, request: Request):
     # validate email format
+    redis_client = getattr(request.app.state.config, "_redis", None)
     if not validate_email_format(data.email.lower()):
         raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_EMAIL_FORMAT)
     if not validate_otp_format(data.otp):
@@ -633,7 +635,7 @@ async def otp_verification(data: verifyOtpForm):
         print(e)
         raise HTTPException(400, detail=f"Failed to verify OTP token: {e}")
     try:
-        return verify_otp(data.email, data.otp)
+        return verify_otp(data.email, data.otp, redis_client=redis_client)
     except Exception as e:
         print(e)
         raise HTTPException(500, detail=f"Failed to verify OTP: {e}")

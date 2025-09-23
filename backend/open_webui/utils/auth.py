@@ -5,6 +5,7 @@ import base64
 import hmac
 import hashlib
 import requests
+import json
 import os
 import resend
 import pyotp
@@ -13,8 +14,11 @@ import time
 from datetime import datetime, timedelta
 import pytz
 from pytz import UTC
-from typing import Optional, Union, List, Dict
+from typing import Optional, Union, List, Dict, TYPE_CHECKING
 import random
+
+if TYPE_CHECKING:
+    from redis import Redis
 
 
 from open_webui.models.otp import Otp, otpTable, verifyTokenForm
@@ -40,6 +44,53 @@ log.setLevel(SRC_LOG_LEVELS["OAUTH"])
 
 SESSION_SECRET = WEBUI_SECRET_KEY
 ALGORITHM = "HS256"
+
+OTP_REDIS_TTL_SECONDS = 600
+
+
+def _otp_redis_key(email: str) -> str:
+    return f"open-webui:otp:{email.lower()}"
+
+
+def _load_otp_from_redis(redis_client: Optional["Redis"], email: str) -> Optional[dict]:
+    if not redis_client:
+        return None
+
+    raw_value = redis_client.get(_otp_redis_key(email))
+    if not raw_value:
+        return None
+
+    try:
+        return json.loads(raw_value)
+    except json.JSONDecodeError:
+        log.warning("Failed to decode OTP payload from Redis for %s", email)
+        redis_client.delete(_otp_redis_key(email))
+        return None
+
+
+def _store_otp_in_redis(redis_client: Optional["Redis"], email: str, payload: dict):
+    if not redis_client:
+        return
+
+    redis_client.set(
+        _otp_redis_key(email),
+        json.dumps(payload),
+        ex=OTP_REDIS_TTL_SECONDS,
+    )
+
+
+def _update_redis_record(
+    redis_client: Optional["Redis"], email: str, payload: dict, ttl: Optional[int] = None
+):
+    if not redis_client:
+        return
+
+    ttl = ttl if ttl and ttl > 0 else OTP_REDIS_TTL_SECONDS
+    redis_client.set(
+        _otp_redis_key(email),
+        json.dumps(payload),
+        ex=ttl,
+    )
 
 ##############
 # Auth Utils
@@ -263,9 +314,9 @@ def get_admin_user(user=Depends(get_current_user)):
 
 
 # Send email
-def send_email(email: str):
+def send_email(email: str, redis_client: Optional["Redis"] = None):
     try:
-        otp_model = generate_otp(email=email)
+        otp_model = generate_otp(email=email, redis_client=redis_client)
         if otp_model is None:
             return None
     except Exception as e:
@@ -336,11 +387,12 @@ def send_email(email: str):
 
 
 # Generate OTP
-def generate_otp(email: str):
+def generate_otp(email: str, redis_client: Optional["Redis"] = None):
+    normalized_email = email.lower()
     otp_secret = pyotp.random_base32()
     otp = pyotp.TOTP(otp_secret, digits=6, interval=600).now()
     otp_model = Otp(
-        email=email,
+        email=normalized_email,
         otp=hashlib.sha256(otp.encode()).hexdigest(),
         attempts=0,
         is_used=False,
@@ -360,51 +412,99 @@ def generate_otp(email: str):
         raise HTTPException(500, detail=f"Failed to get user by email: {e}")
     # If an email has already tried to send an email, generate a new OTP and update the OTP and token in the table
     try:
-        otp_exist = otpTable().get_otp_by_email(email)
-        if otp_exist:
-            if otp_exist.attempts < 3:
-                otpTable().update_otp_by_email(email, otp_model.otp, otp_model.token)
-                otpTable().increment_attempts(email)
-            else:
-                raise HTTPException(
-                    400,
-                    detail="You have reached the maximum number of attempts. Please try again later.",
-                )
+        existing_attempts = 0
+        if redis_client:
+            existing_record = _load_otp_from_redis(redis_client, otp_model.email)
+            if existing_record:
+                existing_attempts = existing_record.get("attempts", 0)
+                if existing_attempts >= 3:
+                    raise HTTPException(
+                        400,
+                        detail="You have reached the maximum number of attempts. Please try again later.",
+                    )
+
+            payload = {
+                "otp": otp_model.otp,
+                "token": otp_model.token,
+                "attempts": existing_attempts + 1,
+                "is_used": False,
+            }
+            _store_otp_in_redis(redis_client, otp_model.email, payload)
         else:
-            otpTable().insert_new_otp(email, otp_model.otp, otp_model.token)
-            otpTable().increment_attempts(email)
+            otp_exist = otpTable().get_otp_by_email(otp_model.email)
+            if otp_exist:
+                if otp_exist.attempts < 3:
+                    otpTable().update_otp_by_email(
+                        otp_model.email, otp_model.otp, otp_model.token
+                    )
+                    otpTable().increment_attempts(otp_model.email)
+                    existing_attempts = otp_exist.attempts
+                else:
+                    raise HTTPException(
+                        400,
+                        detail="You have reached the maximum number of attempts. Please try again later.",
+                    )
+            else:
+                otpTable().insert_new_otp(otp_model.email, otp_model.otp, otp_model.token)
+                otpTable().increment_attempts(otp_model.email)
     # If the user has reached the maximum number of attempts, they will be limited and unable to request an email again
     except Exception as e:
         print(e)
         raise HTTPException(500, detail=f"Failed to save OTP to database: {e}")
+    otp_model.attempts = existing_attempts + 1
     otp_model.otp = otp
     otp_model.token = token
     return otp_model
 
 
-def verify_otp(email: str, otp: str):
-    if email is not None and otp is not None:
-        otp_model = otpTable().get_otp_by_email(email)
+def verify_otp(email: str, otp: str, redis_client: Optional["Redis"] = None):
+    otp_model = None
+    normalized_email = email.lower() if email else email
+
+    if normalized_email is not None and otp is not None:
+        if redis_client:
+            otp_model = _load_otp_from_redis(redis_client, normalized_email)
+        else:
+            otp_model = otpTable().get_otp_by_email(normalized_email)
     if otp_model is None:
         print("otp_model is None")
         return False
-    if otp_model.attempts >= 3:
+    attempts = (
+        otp_model.get("attempts", 0)
+        if isinstance(otp_model, dict)
+        else getattr(otp_model, "attempts", 0)
+    )
+    if attempts >= 3:
         print("otp_model.attempts >= 3")
         return False
-    if otp_model.is_used:
+    is_used = (
+        otp_model.get("is_used", False)
+        if isinstance(otp_model, dict)
+        else getattr(otp_model, "is_used", False)
+    )
+    if is_used:
         print("otp_model.is_used")
         return False
-    if otp_model:
-        if otp_model.otp == hashlib.sha256(otp.encode()).hexdigest():
-            otpTable().mark_as_used(email)
-            token_data = {
-                "email": otp_model.email,
-                "is_used": True,
-            }
-            token = create_token(token_data, expires_delta=timedelta(minutes=10))
-            print("otp verification successful")
-            return (True, token)
-    print(f"{otp_model.otp == hashlib.sha256(otp.encode()).hexdigest()}")
+    stored_otp = (
+        otp_model.get("otp") if isinstance(otp_model, dict) else otp_model.otp
+    )
+    if stored_otp == hashlib.sha256(otp.encode()).hexdigest():
+        if redis_client and isinstance(otp_model, dict):
+            otp_model["is_used"] = True
+            key_ttl = redis_client.ttl(_otp_redis_key(normalized_email))
+            _update_redis_record(redis_client, normalized_email, otp_model, ttl=key_ttl)
+        else:
+            otpTable().mark_as_used(normalized_email)
+
+        token_data = {
+            "email": normalized_email,
+            "is_used": True,
+        }
+        token = create_token(token_data, expires_delta=timedelta(minutes=10))
+        print("otp verification successful")
+        return (True, token)
+
+    print(f"{stored_otp == hashlib.sha256(otp.encode()).hexdigest()}")
     print("otp verification failed")
     return False
 
@@ -455,6 +555,14 @@ def update_user_password_by_email(email: str, new_password: str):
         raise HTTPException(400, detail=f"Failed to update user password by id: {e}")
 
 
-def check_email_attempts(email: str):
-    otp_record = otpTable().get_otp_by_email(email)
+def check_email_attempts(email: str, redis_client: Optional["Redis"] = None):
+    normalized_email = email.lower()
+
+    if redis_client:
+        otp_record = _load_otp_from_redis(redis_client, normalized_email)
+        if otp_record:
+            return otp_record.get("attempts", 0)
+        return 0
+
+    otp_record = otpTable().get_otp_by_email(normalized_email)
     return otp_record.attempts if otp_record else 0
