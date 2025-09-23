@@ -85,7 +85,7 @@ def _update_redis_record(
     if not redis_client:
         return
 
-    ttl = ttl if ttl and ttl > 0 else OTP_REDIS_TTL_SECONDS
+    ttl = ttl if ttl is not None and ttl >= 0 else OTP_REDIS_TTL_SECONDS
     redis_client.set(
         _otp_redis_key(email),
         json.dumps(payload),
