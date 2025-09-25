@@ -340,6 +340,11 @@ except ValueError:
     log.info(f"Invalid UVICORN_WORKERS value, defaulting to {UVICORN_WORKERS}")
 
 ####################################
+# RESEND
+####################################
+RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
+
+####################################
 # WEBUI_AUTH (Required for security)
 ####################################
 

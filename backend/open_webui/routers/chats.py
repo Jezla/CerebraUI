@@ -1,5 +1,6 @@
 import json
 import logging
+import time
 from typing import Optional
 
 
@@ -29,6 +30,16 @@ log.setLevel(SRC_LOG_LEVELS["MODELS"])
 
 router = APIRouter()
 
+def _chat_cache_key(user_id: str, chat_id: str) -> str:
+    return f"open-webui:chat:{user_id}:{chat_id}"
+
+def _set_chat_cache(redis, user_id: str, chat_id: str, chat):
+    if redis:
+        redis.set(_chat_cache_key(user_id, chat_id), json.dumps(chat.model_dump()), ex=300)
+
+def _delete_chat_cache(redis, user_id: str, chat_id: str):
+    if redis:
+        redis.delete(_chat_cache_key(user_id, chat_id))
 ############################
 # GetChatList
 ############################
@@ -343,30 +354,34 @@ async def get_user_chat_list_by_tag_name(
 @router.get("/{id}", response_model=Optional[ChatResponse])
 async def get_chat_by_id(id: str, request: Request, user=Depends(get_verified_user)):
     redis = getattr(request.app.state.config, "_redis", None)
-    cache_key = f"open-webui:chat:{user.id}:{id}"
+    cache_key = _chat_cache_key(user.id, id)
 
     if redis:
+        startTime = time.time()
         cached_chat = redis.get(cache_key)
+        endTime = time.time()
+        log.info(f"Cache lookup for chat {id} for user {user.id} took {endTime - startTime:.10f} seconds")
         if cached_chat:
             try:
-                print(f"Cache hit for chat {id} for user {user.id}")
+                log.info(f"Cache hit for chat {id} for user {user.id}")
                 return ChatResponse(**json.loads(cached_chat))
             except json.JSONDecodeError:
-                redis.delete(cache_key)
+                _delete_chat_cache(redis, user.id, id)
 
+    startTime = time.time()
     chat = Chats.get_chat_by_id_and_user_id(id, user.id)
-
+    endTime = time.time()
+    log.info(f"Database lookup for chat {id} for user {user.id} took {endTime - startTime:.10f} seconds")
     if chat:
-        if redis:
-            redis.set(cache_key, json.dumps(chat.model_dump()), ex=300)
-        print(f"Cache miss for chat {id} for user {user.id}")
+        _set_chat_cache(redis, user.id, id, chat)
+        log.info(f"Cache miss for chat {id} for user {user.id}")
         return ChatResponse(**chat.model_dump())
 
     else:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail=ERROR_MESSAGES.NOT_FOUND
         )
-    
+
 
 ############################
 # UpdateChatById
@@ -375,12 +390,14 @@ async def get_chat_by_id(id: str, request: Request, user=Depends(get_verified_us
 
 @router.post("/{id}", response_model=Optional[ChatResponse])
 async def update_chat_by_id(
-    id: str, form_data: ChatForm, user=Depends(get_verified_user)
+    id: str, request: Request, form_data: ChatForm, user=Depends(get_verified_user)
 ):
+    redis = getattr(request.app.state.config, "_redis", None)
     chat = Chats.get_chat_by_id_and_user_id(id, user.id)
     if chat:
         updated_chat = {**chat.chat, **form_data.chat}
         chat = Chats.update_chat_by_id(id, updated_chat)
+        _set_chat_cache(redis, user.id, id, chat)
         return ChatResponse(**chat.model_dump())
     else:
         raise HTTPException(
@@ -398,9 +415,10 @@ class MessageForm(BaseModel):
 
 @router.post("/{id}/messages/{message_id}", response_model=Optional[ChatResponse])
 async def update_chat_message_by_id(
-    id: str, message_id: str, form_data: MessageForm, user=Depends(get_verified_user)
+    id: str, message_id: str, request: Request, form_data: MessageForm, user=Depends(get_verified_user)
 ):
     chat = Chats.get_chat_by_id(id)
+    redis = getattr(request.app.state.config, "_redis", None)
 
     if not chat:
         raise HTTPException(
@@ -442,7 +460,7 @@ async def update_chat_message_by_id(
                 },
             }
         )
-
+    _set_chat_cache(redis, chat.user_id, id, chat)
     return ChatResponse(**chat.model_dump())
 
 
@@ -497,6 +515,7 @@ async def send_chat_message_event_by_id(
 
 @router.delete("/{id}", response_model=bool)
 async def delete_chat_by_id(request: Request, id: str, user=Depends(get_verified_user)):
+    redis = getattr(request.app.state.config, "_redis", None)
     if user.role == "admin":
         chat = Chats.get_chat_by_id(id)
         for tag in chat.meta.get("tags", []):
@@ -505,6 +524,7 @@ async def delete_chat_by_id(request: Request, id: str, user=Depends(get_verified
 
         result = Chats.delete_chat_by_id(id)
 
+        _delete_chat_cache(redis, chat.user_id, id)
         return result
     else:
         if not has_permission(
@@ -521,6 +541,7 @@ async def delete_chat_by_id(request: Request, id: str, user=Depends(get_verified
                 Tags.delete_tag_by_name_and_user_id(tag, user.id)
 
         result = Chats.delete_chat_by_id_and_user_id(id, user.id)
+        _delete_chat_cache(redis, chat.user_id, id)
         return result
 
 
@@ -729,7 +750,9 @@ async def update_chat_folder_id_by_id(
 
 
 @router.get("/{id}/tags", response_model=list[TagModel])
-async def get_chat_tags_by_id(id: str, request: Request, user=Depends(get_verified_user)):
+async def get_chat_tags_by_id(
+    id: str, request: Request, user=Depends(get_verified_user)
+):
     redis = getattr(request.app.state.config, "_redis", None)
     cache_key = f"open-webui:chat:tags:{user.id}:{id}"
 
@@ -840,7 +863,9 @@ async def delete_tag_by_id_and_tag_name(
 
 
 @router.delete("/{id}/tags/all", response_model=Optional[bool])
-async def delete_all_tags_by_id(id: str, request: Request, user=Depends(get_verified_user)):
+async def delete_all_tags_by_id(
+    id: str, request: Request, user=Depends(get_verified_user)
+):
     chat = Chats.get_chat_by_id_and_user_id(id, user.id)
     redis = getattr(request.app.state.config, "_redis", None)
     cache_key = f"open-webui:chat:tags:{user.id}:{id}"

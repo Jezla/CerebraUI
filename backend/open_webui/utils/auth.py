@@ -6,21 +6,26 @@ import hmac
 import hashlib
 import requests
 import os
-
+import resend
+import pyotp
+import time
 
 from datetime import datetime, timedelta
 import pytz
 from pytz import UTC
 from typing import Optional, Union, List, Dict
+import random
 
+
+from open_webui.models.otp import Otp, otpTable, verifyTokenForm
 from open_webui.models.users import Users
-
 from open_webui.constants import ERROR_MESSAGES
 from open_webui.env import (
     WEBUI_SECRET_KEY,
     TRUSTED_SIGNATURE_KEY,
     STATIC_DIR,
     SRC_LOG_LEVELS,
+    RESEND_API_KEY,
 )
 
 from fastapi import BackgroundTasks, Depends, HTTPException, Request, Response, status
@@ -255,3 +260,201 @@ def get_admin_user(user=Depends(get_current_user)):
             detail=ERROR_MESSAGES.ACCESS_PROHIBITED,
         )
     return user
+
+
+# Send email
+def send_email(email: str):
+    try:
+        otp_model = generate_otp(email=email)
+        if otp_model is None:
+            return None
+    except Exception as e:
+        print(e)
+        raise HTTPException(500, detail=f"Failed to generate OTP: {e}")
+    resend.api_key = RESEND_API_KEY
+    params = {
+        "from": "CerebraUI <no-reply@cerebraui.tech>",
+        "to": [f"{email}"],
+        "subject": "Your OTP for CerebraUI",
+        "html": f"""
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Email Verification</title>
+        </head>
+        <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f9fafb;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f9fafb;">
+                <tr>
+                    <td style="padding: 30px 10px;">
+                        <table role="presentation" cellpadding="0" cellspacing="0" border="0" 
+                               style="max-width: 500px; margin: 0 auto; background: #ffffff; 
+                                      border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                            <tr>
+                                <td style="padding: 25px; text-align: center;">
+                                    <h2 style="color: #333333; margin: 0 0 10px 0; font-size: 24px;">
+                                        🔐 Verify Your Email
+                                    </h2>
+                                    <p style="color: #555555; font-size: 15px; line-height: 1.5; margin: 0 0 25px 0;">
+                                        Please use the verification code below to continue with your request.
+                                    </p>
+                                    <div style="margin: 25px 0;">
+                                        <span style="font-size: 32px; font-weight: bold; letter-spacing: 3px;
+                                                     color: #2563eb; background-color: #eef2ff; padding: 12px 20px;
+                                                     border-radius: 8px; display: inline-block;">
+                                            {otp_model.otp}
+                                        </span>
+                                    </div>
+                                    <div style="margin: 20px 0; padding: 20px 0;">
+                                        <p style="color: #777777; font-size: 14px; line-height: 1.5; margin: 0;">
+                                        This code will expire in <strong>10 minutes</strong>. 
+                                        If you did not request this, you can safely ignore this email.
+                                        </p>
+                                    </div>
+                                    <div style="border-top: 1px solid #eeeeee; padding-top: 20px; margin-top: 20px;">
+                                        <p style="color: #aaaaaa; font-size: 14px; margin: 0; line-height: 1.4;">
+                                        © 2025 CerebraUI. All rights reserved.
+                                        </p>
+                                    </div>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </body>
+        </html>
+        """,
+    }
+    try:
+        resend.Emails.send(params)
+    except Exception as e:
+        print(e)
+        raise HTTPException(500, detail=f"Failed to send email: {e}")
+    return otp_model
+
+
+# Generate OTP
+def generate_otp(email: str):
+    otp_secret = pyotp.random_base32()
+    otp = pyotp.TOTP(otp_secret, digits=6, interval=600).now()
+    otp_model = Otp(
+        email=email,
+        otp=hashlib.sha256(otp.encode()).hexdigest(),
+        attempts=0,
+        is_used=False,
+    )
+    token_data = {
+        "email": otp_model.email,
+        "otp": otp_model.otp,
+    }
+    token = create_token(token_data, expires_delta=timedelta(minutes=10))
+    otp_model.token = hashlib.sha256(token.encode()).hexdigest()
+    try:
+        is_user_exist = Users.get_user_by_email(otp_model.email)
+        if not is_user_exist:
+            return None
+    except Exception as e:
+        print(e)
+        raise HTTPException(500, detail=f"Failed to get user by email: {e}")
+    # If an email has already tried to send an email, generate a new OTP and update the OTP and token in the table
+    try:
+        otp_exist = otpTable().get_otp_by_email(email)
+        if otp_exist:
+            if otp_exist.attempts < 3:
+                otpTable().update_otp_by_email(email, otp_model.otp, otp_model.token)
+                otpTable().increment_attempts(email)
+            else:
+                raise HTTPException(
+                    400,
+                    detail="You have reached the maximum number of attempts. Please try again later.",
+                )
+        else:
+            otpTable().insert_new_otp(email, otp_model.otp, otp_model.token)
+            otpTable().increment_attempts(email)
+    # If the user has reached the maximum number of attempts, they will be limited and unable to request an email again
+    except Exception as e:
+        print(e)
+        raise HTTPException(500, detail=f"Failed to save OTP to database: {e}")
+    otp_model.otp = otp
+    otp_model.token = token
+    return otp_model
+
+
+def verify_otp(email: str, otp: str):
+    if email is not None and otp is not None:
+        otp_model = otpTable().get_otp_by_email(email)
+    if otp_model is None:
+        print("otp_model is None")
+        return False
+    if otp_model.attempts >= 3:
+        print("otp_model.attempts >= 3")
+        return False
+    if otp_model.is_used:
+        print("otp_model.is_used")
+        return False
+    if otp_model:
+        if otp_model.otp == hashlib.sha256(otp.encode()).hexdigest():
+            otpTable().mark_as_used(email)
+            token_data = {
+                "email": otp_model.email,
+                "is_used": True,
+            }
+            token = create_token(token_data, expires_delta=timedelta(minutes=10))
+            print("otp verification successful")
+            return (True, token)
+    print(f"{otp_model.otp == hashlib.sha256(otp.encode()).hexdigest()}")
+    print("otp verification failed")
+    return False
+
+
+def verify_otp_token(data: verifyTokenForm):
+    token = data.token
+    email = data.email
+    try:
+        decoded_token = jwt.decode(token, SESSION_SECRET, algorithms=[ALGORITHM])
+        if email != decoded_token.get("email"):
+            raise HTTPException(400, detail="Email is Wrong. email does not match")
+        else:
+            print("token verification successful")
+            return True
+    except Exception as e:
+        print(e)
+        raise HTTPException(400, detail=f"Failed to verify OTP token: {e}")
+
+
+def verify_reset_token(data: verifyTokenForm):
+    token = data.token
+    email = data.email
+    try:
+        decoded_token = jwt.decode(token, SESSION_SECRET, algorithms=[ALGORITHM])
+        if email != decoded_token.get("email"):
+            raise HTTPException(400, detail="Email is Wrong. email does not match")
+        elif not decoded_token.get("is_used"):
+            raise HTTPException(400, detail="Token is Wrong. token is used")
+        else:
+            print("token verification successful")
+            return True
+    except Exception as e:
+        print(e)
+        raise HTTPException(400, detail=f"Failed to verify OTP token: {e}")
+
+
+def update_user_password_by_email(email: str, new_password: str):
+    try:
+        user = Users.get_user_by_email(email)
+    except Exception as e:
+        raise HTTPException(400, detail=f"Failed to get user by email: {e}")
+    try:
+        from open_webui.models.auths import Auths
+
+        return Auths.update_user_password_by_id(user.id, new_password)
+    except Exception as e:
+        print(e)
+        raise HTTPException(400, detail=f"Failed to update user password by id: {e}")
+
+
+def check_email_attempts(email: str):
+    otp_record = otpTable().get_otp_by_email(email)
+    return otp_record.attempts if otp_record else 0
