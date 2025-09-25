@@ -4,7 +4,7 @@ Deploy Open WebUI as a flexible and scalable microservices architecture with fro
 
 ## Architecture Overview
 
-The microservices architecture consists of eight core services:
+The microservices architecture consists of nine core services:
 
 1. **Frontend Service**: Nginx-based Svelte static file service responsible for providing the user interface.
 2. **Backend Service**: Python FastAPI-based core application that handles business logic, API requests, and orchestrates other services.
@@ -13,7 +13,8 @@ The microservices architecture consists of eight core services:
 5. **AI Workflow Service (Langflow)**: Visual AI workflow builder for creating and managing complex AI pipelines and chatbots.
 6. **Image Generation Service (ComfyUI)**: A powerful and modular node-based GUI for image generation, integrated directly with the backend.
 7. **Model Context Protocol Server (MCP Server)**: Provides AI models with a standardized set of tools (e.g., memory, time, web search) to enhance their capabilities.
-8. **Observability Service (Grafana)**: Collects telemetry data (traces, metrics) from the backend for monitoring and performance analysis.
+8. **Web Scraping Service (Crawl4AI)**: Advanced web content extraction and scraping service with AI-powered content processing capabilities.
+9. **Observability Service (Grafana)**: Collects telemetry data (traces, metrics) from the backend for monitoring and performance analysis.
 
 ```mermaid
 graph TD
@@ -27,6 +28,7 @@ graph TD
         Langflow["Langflow (AI Workflow)<br>Port: 7860"]
         ComfyUI["ComfyUI (Image Generation)<br>Port: 8188"]
         MCPServer["MCP Server (AI Tools)<br>Port: 8000"]
+        Crawl4AI["Crawl4AI (Web Scraping)<br>Port: 11235"]
         Grafana["Grafana (Observability)<br>Port: 3001"]
         Ollama["Ollama (AI Model Service)"]
         Redis["Redis (Cache Service)"]
@@ -42,6 +44,7 @@ graph TD
     Backend -- "Direct API Call" --> Ollama
     Backend -- "Data Cache/Read" --> Redis
     Backend -- "Image Generation API Call" --> ComfyUI
+    Backend -- "Web Scraping API Call" --> Crawl4AI
     Backend -- "Sends Telemetry Data (OTLP)" --> Grafana
     Backend -- "Can use tools via" --> MCPServer
 
@@ -62,19 +65,35 @@ The project manages environment variables through the `.env` file. You can start
 cp .env.example .env
 ```
 
-Prepare Directories for ComfyUI.
+**Important:** After creating your `.env` file, you **must** open it with a text editor and provide values for the following variables to enable key features and ensure data persistence.
+
+*   `LANGFLOW_DATABASE_URL`: **Required for Langflow data persistence.** If left empty, Langflow will use a temporary database inside the container, and all your workflows will be lost when the container is removed.
+    *   **Action:** We use **Neon** for our PostgreSQL database. To configure this, log into your Neon dashboard, select your project, navigate to **Connection Details**, and copy the full **Postgres URI** (the one that includes your password). Paste this value here.
+
+*   `DATABASE_URL`: **Recommended for Open WebUI data persistence.** The process is the same as for Langflow. Providing a Neon connection string here ensures your user data, chat history, and settings are preserved safely in the cloud. If left empty, a default SQLite database will be used inside a Docker volume, which is less robust.
+
+*   `TAVILY_API_KEY`: **Required to enable Tavily web search.** If you want to use the Tavily search engine for the web search feature, you must get an API key from the [Tavily website](https://tavily.com/) and paste it here.
+
+After editing and saving your `.env` file with these values, you can proceed to the next step.
+
+
+
+**Prepare Directories for ComfyUI.**
 
 ComfyUI requires specific host directories to be mounted for storing models and user data. Create them before starting the services:
 
 ```shell
-# Create the necessary directories for ComfyUI volumes
-mkdir -p storage
-mkdir -p storage-models/models
-mkdir -p storage-models/hf-hub
-mkdir -p storage-models/torch-hub
-mkdir -p storage-user/input
-mkdir -p storage-user/output
-mkdir -p storage-user/workflows
+# Create a parent directory for all ComfyUI data first
+mkdir -p comfyui
+
+# Create the necessary subdirectories inside the comfyui directory
+mkdir -p comfyui/storage
+mkdir -p comfyui/storage-models/models
+mkdir -p comfyui/storage-models/hf-hub
+mkdir -p comfyui/storage-models/torch-hub
+mkdir -p comfyui/storage-user/input
+mkdir -p comfyui/storage-user/output
+mkdir -p comfyui/storage-user/workflows
 ```
 
 ### 2. Start Services
@@ -99,8 +118,9 @@ After the services start, you can access them through the following addresses:
 - **Langflow Interface**: `http://localhost:7860`
 - **ComfyUI Interface**: `http://localhost:8188`
 - **MCP Server API**: `http://localhost:8000`
-- **Ollama Service**: `http://localhost:11434` (within container network)
+- **Ollama Service**: `http://localhost:11434`
 - **Redis Service**: `localhost:6379`
+- **Crawl4AI Service**: `http://localhost:11235`
 - **Grafana Dashboard**: `http://localhost:3001`
 
 ## Service Configuration
@@ -126,14 +146,17 @@ The integration is enabled via environment variables. Follow these steps to conf
 ComfyUI requires specific host directories to be mounted for storing models and user data. Create them before starting the services:
 
 ```shell
-# Create the necessary directories for ComfyUI volumes
-mkdir -p storage
-mkdir -p storage-models/models
-mkdir -p storage-models/hf-hub
-mkdir -p storage-models/torch-hub
-mkdir -p storage-user/input
-mkdir -p storage-user/output
-mkdir -p storage-user/workflows
+# Create a parent directory for all ComfyUI data first
+mkdir -p comfyui
+
+# Create the necessary subdirectories inside the comfyui directory
+mkdir -p comfyui/storage
+mkdir -p comfyui/storage-models/models
+mkdir -p comfyui/storage-models/hf-hub
+mkdir -p comfyui/storage-models/torch-hub
+mkdir -p comfyui/storage-user/input
+mkdir -p comfyui/storage-user/output
+mkdir -p comfyui/storage-user/workflows
 ```
 
 **Step 2: Place Model Files**
@@ -199,6 +222,80 @@ The `mcp-proxy` tool translates Langflow's SSE stream into the MCP protocol that
 
 
 
+### **Crawl4AI Integration (Web Scraping)**
+
+Crawl4AI provides advanced web content extraction capabilities with AI-powered processing. The service is automatically integrated with the backend for enhanced web search and content analysis features.
+
+**Key Features:**
+
+- **AI-Powered Content Extraction**: Intelligent content parsing and cleaning
+- **Multiple Output Formats**: Support for markdown, structured data, and raw HTML
+- **JavaScript Rendering**: Full support for dynamic content via headless browser
+- **Concurrent Processing**: High-performance parallel scraping capabilities
+- **Content Filtering**: Smart content filtering and relevance scoring
+
+**Configuration:**
+The Crawl4AI service is pre-configured and ready to use. The backend automatically connects to it via the internal network address `http://crawl4ai:11235`. No additional configuration is required for basic functionality.
+
+Of course. Here is the section for your README file on how to configure web search using Tavily, written in English.
+
+
+
+### Web Search Configuration (e.g., Tavily)
+
+To enable the web search capability for your AI models, you need to configure the backend service with the appropriate environment variables. This example demonstrates how to set up the [Tavily Search API](https://tavily.com/).
+
+**Step 1: Enable Web Search**
+
+First, you must enable the web search feature globally by setting the `ENABLE_WEB_SEARCH` environment variable to `true`.
+
+**Step 2: Configure the Search Engine and API Key**
+
+Next, specify `tavily` as the search engine and provide your personal API key. You can get an API key from the Tavily website.
+
+**Step 3: Update Your Configuration**
+
+These environment variables should be set for the `backend` service. For better security and management, it is highly recommended to add them to your `.env` file.
+
+Add the following lines to your `.env` file:
+
+```env
+# in your .env file
+ENABLE_WEB_SEARCH=true
+WEB_SEARCH_ENGINE=tavily
+TAVILY_API_KEY=tvly-xxxxxxxxxxxxxxxxxxxxxxxxxx # <-- IMPORTANT: Replace with your actual Tavily API key
+```
+
+Ensure your `docker-compose.microservices.yaml` file is set up to read these variables from the environment:
+
+```yaml
+# In docker-compose.microservices.yaml
+...
+services:
+  ...
+  backend:
+    ...
+    environment:
+      # ... other variables
+      - 'ENABLE_WEB_SEARCH=${ENABLE_WEB_SEARCH:-false}'
+      - 'WEB_SEARCH_ENGINE=${WEB_SEARCH_ENGINE:-duckduckgo}'
+      - 'TAVILY_API_KEY=${TAVILY_API_KEY:-}'
+      # ... other variables
+...
+```
+
+**Step 4: Apply Changes**
+
+After modifying your configuration, restart the services to apply the new settings. It's sufficient to restart only the backend service.
+
+```bash
+docker compose -f docker-compose.microservices.yaml up -d --force-recreate backend
+```
+
+Your Open WebUI instance is now configured to use Tavily for web search functionality.
+
+
+
 ## Network Communication
 
 - **User → Frontend**: Users access the frontend Nginx service through browsers.
@@ -206,5 +303,6 @@ The `mcp-proxy` tool translates Langflow's SSE stream into the MCP protocol that
 - **Backend → Ollama**: Backend directly communicates with the Ollama service (`http://ollama:11434`) for language model inference.
 - **Backend → Redis**: Backend connects to the Redis service for data caching.
 - **Backend → ComfyUI**: For the native image generation feature, the backend makes API calls directly to the ComfyUI service (`http://comfyui:8188`).
+- **Backend → Crawl4AI**: For enhanced web content extraction, the backend makes API calls to the Crawl4AI service (`http://crawl4ai:11235`).
 - **Backend → Grafana**: The backend is configured as an OpenTelemetry (OTEL) client and sends tracing/metrics data to Grafana for monitoring.
 - **Backend → MCP Server**: The AI model, running via the backend, can be configured to use tools provided by the MCP Server.

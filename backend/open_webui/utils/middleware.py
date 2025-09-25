@@ -440,9 +440,19 @@ async def chat_web_search_handler(
 
     if all_results:
         urls = []
+        search_results = []
+        search_engine = None
+        query = None
+
         for results in all_results:
             if "filenames" in results:
                 urls.extend(results["filenames"])
+            if "search_results" in results:
+                search_results.extend(results["search_results"])
+            if "search_engine" in results and not search_engine:
+                search_engine = results["search_engine"]
+            if "query" in results and not query:
+                query = results["query"]
 
         await event_emitter(
             {
@@ -451,6 +461,9 @@ async def chat_web_search_handler(
                     "action": "web_search",
                     "description": "Searched {{count}} sites",
                     "urls": urls,
+                    "search_results": search_results,
+                    "search_engine": search_engine,
+                    "query": query,
                     "done": True,
                 },
             }

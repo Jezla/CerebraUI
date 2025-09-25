@@ -1,16 +1,32 @@
 services:
-  # 新增 Grafana LGTM 监控服务
+  # Crawl4AI
+  crawl4ai:
+    image: unclecode/crawl4ai:latest
+    container_name: crawl4ai
+    ports:
+      - "11235:11235"
+    shm_size: 1g
+    networks:
+      - openwebui-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:11235/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Grafana LGTM
   grafana:
     image: grafana/otel-lgtm:latest
     container_name: lgtm
     ports:
-      - "${GRAFANA_PORT:-3001}:3000"   # Grafana UI（避免与frontend冲突）
+      - "${GRAFANA_PORT:-3001}:3000"   # Grafana UI
       - "4317:4317"   # OTLP/gRPC
       - "4318:4318"   # OTLP/HTTP
     networks:
       - openwebui-network
     restart: unless-stopped
-
 
   # Frontend Service - Nginx serving static files
   frontend:
@@ -42,6 +58,7 @@ services:
       - ollama
       - redis
       - grafana
+      - crawl4ai
     ports:
       - "${BACKEND_PORT:-8080}:8080"
     environment:
@@ -51,10 +68,10 @@ services:
       - 'ENABLE_PERSISTENT_CONFIG=${ENABLE_PERSISTENT_CONFIG:-false}'
       - 'REDIS_URL=${REDIS_URL:-}'
       - 'DATABASE_URL=${DATABASE_URL:-}'
-      #enable ComfyUI
+      # ComfyUI
       - 'ENABLE_IMAGE_GENERATION=True'
       - 'COMFYUI_BASE_URL=http://comfyui:8188'
-      # OpenTelemetry 配置
+      # OpenTelemetry
       - 'ENABLE_OTEL=true'
       - 'ENABLE_OTEL_METRICS=true'
       - 'OTEL_EXPORTER_OTLP_ENDPOINT=http://grafana:4317'
@@ -62,6 +79,17 @@ services:
       - 'OTEL_SERVICE_NAME=cerebra-ui'
       - 'OTEL_BASIC_AUTH_USERNAME=admin'
       - 'OTEL_BASIC_AUTH_PASSWORD=admin'
+      # Web Search
+      - 'ENABLE_WEB_SEARCH=${ENABLE_WEB_SEARCH:-false}'
+      - 'WEB_SEARCH_RESULT_COUNT=${WEB_SEARCH_RESULT_COUNT:-2}'
+      - 'ENABLE_SEARCH_QUERY_GENERATION=${ENABLE_SEARCH_QUERY_GENERATION:-true}'
+      - 'WEB_SEARCH_ENGINE=${WEB_SEARCH_ENGINE:-duckduckgo}'
+      - 'WEB_LOADER_CONCURRENT_REQUESTS=${WEB_LOADER_CONCURRENT_REQUESTS:-6}'
+      - 'WEB_SEARCH_TRUST_ENV=${WEB_SEARCH_TRUST_ENV:-false}'
+      - 'BYPASS_WEB_SEARCH_EMBEDDING_AND_RETRIEVAL=${BYPASS_WEB_SEARCH_EMBEDDING_AND_RETRIEVAL:-false}'
+      - 'WEB_LOADER_ENGINE=${WEB_LOADER_ENGINE:-safe_web}'
+      - 'TAVILY_API_KEY=${TAVILY_API_KEY:-}'
+      - 'ANONYMIZED_TELEMETRY=${ANONYMIZED_TELEMETRY:-false}'
     extra_hosts:
       - host.docker.internal:host-gateway
     networks:
@@ -80,10 +108,8 @@ services:
     container_name: mcpo-server
     restart: unless-stopped
     ports:
-      # 将 8000 端口暴露出来，主要是为了方便从浏览器访问 API 文档进行调试
       - "8000:8000"
     volumes:
-      # 将宿主机的配置文件挂载到容器中，:ro 表示只读
       - ./mcp-config.json:/app/config.json:ro
     command: >
       mcpo 
@@ -159,6 +185,8 @@ services:
     tty: true
     restart: unless-stopped
     image: ollama/ollama:${OLLAMA_DOCKER_TAG-latest}
+    ports:
+      - "11434:11434"
     networks:
       - openwebui-network
 
