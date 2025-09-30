@@ -90,6 +90,8 @@ services:
       - 'WEB_LOADER_ENGINE=${WEB_LOADER_ENGINE:-safe_web}'
       - 'TAVILY_API_KEY=${TAVILY_API_KEY:-}'
       - 'ANONYMIZED_TELEMETRY=${ANONYMIZED_TELEMETRY:-false}'
+      - 'RESEND_API_KEY=${RESEND_API_KEY:-}'
+
     extra_hosts:
       - host.docker.internal:host-gateway
     networks:

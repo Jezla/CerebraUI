@@ -1,3 +1,4 @@
+from ast import Str
 import re
 import uuid
 import time
@@ -18,6 +19,7 @@ from open_webui.models.auths import (
     UpdatePasswordForm,
     UpdateProfileForm,
     UserResponse,
+    TokenResponse,
 )
 from open_webui.models.otp import verifyOtpForm, verifyTokenForm, ResetPasswordForm
 from open_webui.models.users import Users
@@ -54,6 +56,7 @@ from open_webui.utils.auth import (
     verify_reset_token,
     update_user_password_by_email,
     check_email_attempts,
+    get_email_type_from_token,
 )
 from open_webui.utils.webhook import post_webhook
 from open_webui.utils.access_control import get_permissions
@@ -79,6 +82,7 @@ log.setLevel(SRC_LOG_LEVELS["MAIN"])
 class SessionUserResponse(Token, UserResponse):
     expires_at: Optional[int] = None
     permissions: Optional[dict] = None
+    last_active_at: int = None
 
 
 @router.get("/", response_model=SessionUserResponse)
@@ -413,7 +417,7 @@ async def signin(request: Request, response: Response, form_data: SigninForm):
         user_permissions = get_permissions(
             user.id, request.app.state.config.USER_PERMISSIONS
         )
-
+        print("user.last_active_at", user.last_active_at)
         return {
             "token": token,
             "token_type": "Bearer",
@@ -424,6 +428,7 @@ async def signin(request: Request, response: Response, form_data: SigninForm):
             "role": user.role,
             "profile_image_url": user.profile_image_url,
             "permissions": user_permissions,
+            "last_active_at": user.last_active_at,
         }
     else:
         raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_CRED)
@@ -591,12 +596,13 @@ async def signout(request: Request, response: Response):
 ############################
 
 
-@router.post("/send_reset_email")
-async def send_reset_email(data: EmailResponse):
+@router.post("/send_email")
+async def send_otp_email(data: EmailResponse, request: Request):
     # validate email format
+    redis_client = getattr(request.app.state.config, "_redis", None)
     if not validate_email_format(data.email.lower()):
         raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_EMAIL_FORMAT)
-    if check_email_attempts(data.email) >= 3:
+    if check_email_attempts(data.email, redis_client=redis_client) >= 3:
         raise HTTPException(
             400,
             detail=f"You have reached the maximum number of attempts. Please try again later.",
@@ -606,7 +612,7 @@ async def send_reset_email(data: EmailResponse):
         return {"received_email": data.email, "otp": None}
     # send email
     try:
-        otp_model = send_email(data.email)
+        otp_model = send_email(data.email, data.type, redis_client=redis_client)
     except Exception as e:
         print(e)
         raise HTTPException(500, detail=f"Failed to send email: {e}")
@@ -618,8 +624,9 @@ async def send_reset_email(data: EmailResponse):
 
 
 @router.post("/verify_otp")
-async def otp_verification(data: verifyOtpForm):
+async def otp_verification(data: verifyOtpForm, request: Request):
     # validate email format
+    redis_client = getattr(request.app.state.config, "_redis", None)
     if not validate_email_format(data.email.lower()):
         raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_EMAIL_FORMAT)
     if not validate_otp_format(data.otp):
@@ -633,7 +640,7 @@ async def otp_verification(data: verifyOtpForm):
         print(e)
         raise HTTPException(400, detail=f"Failed to verify OTP token: {e}")
     try:
-        return verify_otp(data.email, data.otp)
+        return verify_otp(data.email, data.otp, redis_client=redis_client)
     except Exception as e:
         print(e)
         raise HTTPException(500, detail=f"Failed to verify OTP: {e}")
@@ -651,7 +658,7 @@ async def otp_token_verification(data: verifyTokenForm):
 
 
 @router.post("/verify_reset_token")
-async def otp_token_verification(data: verifyTokenForm):
+async def reset_token_verification(data: verifyTokenForm):
     if not validate_email_format(data.email.lower()):
         raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_EMAIL_FORMAT)
     try:
@@ -660,6 +667,9 @@ async def otp_token_verification(data: verifyTokenForm):
         print(e)
         raise HTTPException(500, detail=f"Failed to verify OTP token: {e}")
 
+@router.post("/get_email_type")
+async def get_email_type(data:TokenResponse):
+    return get_email_type_from_token(data.token)
 
 ############################
 # Password Reset
