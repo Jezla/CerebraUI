@@ -26,7 +26,7 @@ from adapters.langflow_adapter import LangFlowAdapter, UpstreamError, UpstreamTi
 from app.db import AsyncSessionLocal, init_db
 from app.models import Base, Run as RunModel, Workflow as WfModel
 
-# -------------------- 日志 --------------------
+# -------------------- Logging --------------------
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("orchestrator")
 
