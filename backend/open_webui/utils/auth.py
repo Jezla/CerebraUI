@@ -314,9 +314,9 @@ def get_admin_user(user=Depends(get_current_user)):
 
 
 # Send email
-def send_email(email: str, redis_client: Optional["Redis"] = None):
+def send_email(email: str, type: str, redis_client: Optional["Redis"] = None):
     try:
-        otp_model = generate_otp(email=email, redis_client=redis_client)
+        otp_model = generate_otp(email=email, type=type, redis_client=redis_client)
         if otp_model is None:
             return None
     except Exception as e:
@@ -387,7 +387,7 @@ def send_email(email: str, redis_client: Optional["Redis"] = None):
 
 
 # Generate OTP
-def generate_otp(email: str, redis_client: Optional["Redis"] = None):
+def generate_otp(email: str, type: str, redis_client: Optional["Redis"] = None):
     normalized_email = email.lower()
     otp_secret = pyotp.random_base32()
     otp = pyotp.TOTP(otp_secret, digits=6, interval=600).now()
@@ -400,6 +400,7 @@ def generate_otp(email: str, redis_client: Optional["Redis"] = None):
     token_data = {
         "email": otp_model.email,
         "otp": otp_model.otp,
+        "type": type,
     }
     token = create_token(token_data, expires_delta=timedelta(minutes=10))
     otp_model.token = hashlib.sha256(token.encode()).hexdigest()
@@ -555,7 +556,7 @@ def update_user_password_by_email(email: str, new_password: str):
 
         return Auths.update_user_password_by_id(user.id, new_password)
     except Exception as e:
-        print(e)
+        log.error(f"Failed to update user password by id: {e}")
         raise HTTPException(400, detail=f"Failed to update user password by id: {e}")
 
 
@@ -570,3 +571,9 @@ def check_email_attempts(email: str, redis_client: Optional["Redis"] = None):
 
     otp_record = otpTable().get_otp_by_email(normalized_email)
     return otp_record.attempts if otp_record else 0
+
+def get_email_type_from_token(token:str):
+    if token:
+        decoded_token = jwt.decode(token, SESSION_SECRET, algorithms=[ALGORITHM])
+        return {"type":decoded_token.get("type")}
+    return None

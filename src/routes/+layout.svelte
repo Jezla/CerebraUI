@@ -33,7 +33,7 @@
 	import { Toaster, toast } from 'svelte-sonner';
 
 	import { executeToolServer, getBackendConfig } from '$lib/apis';
-	import { getSessionUser } from '$lib/apis/auths';
+	import { getSessionUser} from '$lib/apis/auths';
 
 	import '../tailwind.css';
 	import '../app.css';
@@ -557,7 +557,7 @@
 				} else {
 					// Don't redirect if we're already on the auth page
 					// Needed because we pass in tokens from OAuth logins via URL fragments
-					if ($page.url.pathname !== '/auth' && $page.url.pathname !== '/verify' ) {
+					if ($page.url.pathname !== '/auth' && $page.url.pathname !== '/verify') {
 						await goto(`/auth?redirect=${encodedUrl}`);
 					}
 				}
