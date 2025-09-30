@@ -16,7 +16,6 @@ import redis.asyncio as aioredis
 # Auth libs
 import jwt  # PyJWT
 from jwt import PyJWKClient, InvalidTokenError
-# co m m
 # Metrics
 from prometheus_fastapi_instrumentator import Instrumentator
 from prometheus_client import Counter, Histogram
