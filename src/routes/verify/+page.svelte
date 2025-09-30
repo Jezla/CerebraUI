@@ -1,6 +1,7 @@
 <script>
 	import { onMount, onDestroy, getContext } from 'svelte';
-	import { verifyOtp, verifyToken, sendEmail } from '$lib/apis/auths';
+	import { verifyOtp, verifyToken, sendEmail, getEmailType, getSessionUser } from '$lib/apis/auths';
+	import { finalizeSession } from '$lib/services/session';
 	import { toast } from 'svelte-sonner';
 	import { goto } from '$app/navigation';
 
@@ -9,16 +10,22 @@
 	let resendSeconds = 10;
 	let input0, input1, input2, input3, input4, input5;
 	let inputs;
-    const i18n = getContext('i18n');
+	let type;
+	const querystringValue = (key) => {
+		const querystring = window.location.search;
+		const urlParams = new URLSearchParams(querystring);
+		return urlParams.get(key);
+	};
+	const i18n = getContext('i18n');
 
 	onMount(() => {
 		inputs = [input0, input1, input2, input3, input4, input5];
 		if (inputs[0]) inputs[0].focus();
-		if (email == null){
+		if (email == null) {
 			goto('/auth');
 			return;
 		}
-		if (sessionStorage.getItem('rt') != null){
+		if (sessionStorage.getItem('rt') != null) {
 			sessionStorage.removeItem('rt');
 		}
 		let token = sessionStorage.getItem('token');
@@ -30,61 +37,83 @@
 		clearInterval(resendTimer);
 	});
 
-	const verifySessionHandler = async (email,token) => {
-		console.log("Validatesession：", email, token);
-		console.log("Start checking token...");
+	const verifySessionHandler = async (email, token) => {
+		console.log('Validatesession：', email, token);
+		console.log('Start checking token...');
 		if (!token) {
-			console.log("token is empty");
+			console.log('token is empty');
 			toast.error($i18n.t('Invalid session'));
 			goto('/auth');
 			return;
 		}
-		const res = await verifyToken(email,token);
-		console.log("Verify token result：",res);
-		if(res == true){
+		const res = await verifyToken(email, token);
+		console.log('Verify token result：', res);
+		if (res == true) {
 			toast.success($i18n.t('Token verification successful'));
-		}else{
+		} else {
 			toast.error($i18n.t('Session expired'));
 			sessionStorage.removeItem('token');
 			sessionStorage.removeItem('email');
 			goto('/auth');
-		}	
-	}
+		}
+	};
 	// Verify otp
 	const verifyOtpHandler = async (email, code) => {
+		type = await getEmailType(sessionStorage.getItem('token'));
 		let token = sessionStorage.getItem('token');
-		console.log("Verify otp：",email, code,token);
-		if (!validateCode(code)){
-			console.log("Verify check：",validateCode(code));
-			toast.error($i18n.t('Code is not valid')); 
+		console.log('Verify otp：', email, code, token);
+		if (!validateCode(code)) {
+			console.log('Verify check：', validateCode(code));
+			toast.error($i18n.t('Code is not valid'));
 			return;
 		}
 		try {
 			const res = await verifyOtp(email, code, token);
-			console.log("Verify otp result：",res);
-			if (res[0] == true){
-				sessionStorage.setItem('rt', res[1]);
-				goto(`/verify/reset`)
+			console.log('Verify otp result：', res);
+			if (res[0] == true) {
+				if (type == 'signin') {
+					let sessionUser = await getSessionUser(localStorage.token);
+					await finalizeSession(sessionUser);
+					toast.success($i18n.t('Email verification successful'));
+					const redirectPath = querystringValue('redirect') || '/';
+					if (redirectPath.includes('/verify') || redirectPath.includes('/reset')) {
+						goto('/');
+					} else {
+						goto(redirectPath);
+					}
+				} else if (type == 'reset') {
+					sessionStorage.setItem('rt', res[1]);
+					goto(`/verify/reset`);
+				}
 			} else {
 				toast.error($i18n.t('Verification failed'));
 			}
-			
 		} catch (error) {
 			console.log(error);
 			toast.error(`${error.detail}`);
 		}
-	}
+	};
 
-	const resendHandler = async () => { 
-		startCountdown(); 
+	const resendHandler = async () => {
+		startCountdown();
 		try {
-			console.log("Email:",email);
-			const res = await sendEmail(email);
-			if (res.status === 400) {
-				toast.error($i18n.t('You have reached the maximum number of attempts. Please try again later.'));
+			console.log('Email:', email);
+			let token = sessionStorage.getItem('token');
+			console.log('Token:', token);
+			type = await getEmailType(token);
+			if (type == null) {
+				toast.error('Type is missing');
 				return;
 			}
-			if (sessionStorage.getItem('token')!==null) {
+			console.log('Type:', type);
+			const res = await sendEmail(email, type);
+			if (res.status === 400) {
+				toast.error(
+					$i18n.t('You have reached the maximum number of attempts. Please try again later.')
+				);
+				return;
+			}
+			if (sessionStorage.getItem('token') !== null) {
 				sessionStorage.removeItem('token');
 			}
 			sessionStorage.setItem('token', res.token);
@@ -93,10 +122,10 @@
 			console.log(error);
 			toast.error(`${error.detail}`);
 		}
-	}
+	};
 	// Verify otp format is 6 digits
 	function validateCode(code) {
-		return code.length === 6 && /^\d+$/.test(code)
+		return code.length === 6 && /^\d+$/.test(code);
 	}
 
 	function handleInput(e, i) {
@@ -121,11 +150,11 @@
 		clearInterval(resendTimer);
 		if (resendSeconds <= 0) resendSeconds = 10;
 		resendTimer = setInterval(() => {
-		if (resendSeconds > 0){
-			resendSeconds -= 1;
+			if (resendSeconds > 0) {
+				resendSeconds -= 1;
 			} else {
-			clearInterval(resendTimer);
-			}	
+				clearInterval(resendTimer);
+			}
 		}, 1000);
 	}
 </script>
@@ -203,7 +232,9 @@
 			/>
 		</div>
 
-		<p class="text-xs text-gray-500 mb-4">{$i18n.t('Enter the 6-character code sent to your email')}</p>
+		<p class="text-xs text-gray-500 mb-4">
+			{$i18n.t('Enter the 6-character code sent to your email')}
+		</p>
 
 		<div class="mt-5">
 			<button
@@ -221,7 +252,7 @@
 				on:click={resendHandler}
 			>
 				{#if resendSeconds > 0}
-					{$i18n.t('Resend code')}  {resendSeconds}s
+					{$i18n.t('Resend code')} {resendSeconds}s
 				{:else}
 					{$i18n.t('Resend code')}
 				{/if}

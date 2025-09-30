@@ -18,7 +18,7 @@
 	import { WEBUI_NAME, config, user, socket } from '$lib/stores';
 
 	import { generateInitialsImage, canvasPixelTest } from '$lib/utils';
-
+	import { finalizeSession } from '$lib/services/session';
 	import Spinner from '$lib/components/common/Spinner.svelte';
 	import OnBoarding from '$lib/components/OnBoarding.svelte';
 
@@ -40,17 +40,38 @@
 		return urlParams.get(key);
 	};
 
-	const setSessionUser = async (sessionUser) => {
+	export const setSessionUser = async (sessionUser) => {
 		if (sessionUser) {
-			console.log(sessionUser);
+			console.log('sessionUser', sessionUser);
 			toast.success($i18n.t(`You're now logged in.`));
 			if (sessionUser.token) {
 				localStorage.token = sessionUser.token;
 			}
+			console.log("sessionUser.last_active_at",sessionUser.last_active_at);
+			if (
+				sessionUser.last_active_at &&
+				Date.now() - sessionUser.last_active_at * 1000 > 1000 * 60 * 48
+			) {
+				// 用户超过48小时未活跃，需要验证
+				toast.warning($i18n.t('You have not logged in for more than 48 hours, please verify your email'));
+				console.log('User inactive for more than 48 hours, requiring verification');
+				// 发送验证邮件
+				try {
+					const res = await sendEmail(sessionUser.email, 'signin');
+					// 存储验证信息到sessionStorage
+					sessionStorage.setItem('token', res.token);
+					sessionStorage.setItem('email', sessionUser.email);
+					// 跳转到验证页面
+					await goto("/verify");
+					return;
+				} catch (error) {
+					console.error('Failed to send verification email:', error);
+					toast.error('Failed to send verification email');
+				}
+			}
 
-			$socket.emit('user-join', { auth: { token: sessionUser.token } });
-			await user.set(sessionUser);
-			await config.set(await getBackendConfig());
+			await finalizeSession(sessionUser);
+
 
 			const redirectPath = querystringValue('redirect') || '/';
 			if (redirectPath.includes('/verify') || redirectPath.includes('/reset')) {
@@ -91,7 +112,7 @@
 
 	const resetPasswordHandler = async () => {
 		try {
-			let res = await sendEmail(email);
+			let res = await sendEmail(email, 'reset');
 			console.log(res);
 			if (sessionStorage.getItem('token') !== null) {
 				sessionStorage.removeItem('token');
@@ -386,22 +407,22 @@
 												</button>
 											</div>
 										{/if}
-									<!-- Reset password mode below return login button -->
-									{#if mode === 'reset'}
-										<div class="mt-4 text-sm text-center">
-											<span>{$i18n.t('Remembered your password?')}</span>
-											<button
-												class="font-medium underline ml-1"
-												type="button"
-												on:click={() => {
-													mode = 'signin';
-												}}
-											>
-												{$i18n.t('Sign in')}
-											</button>
-										</div>
-									{/if}
-											<!-- Register button -->
+										<!-- Reset password mode below return login button -->
+										{#if mode === 'reset'}
+											<div class="mt-4 text-sm text-center">
+												<span>{$i18n.t('Remembered your password?')}</span>
+												<button
+													class="font-medium underline ml-1"
+													type="button"
+													on:click={() => {
+														mode = 'signin';
+													}}
+												>
+													{$i18n.t('Sign in')}
+												</button>
+											</div>
+										{/if}
+										<!-- Register button -->
 										{#if $config?.features.enable_signup && !($config?.onboarding ?? false) && mode !== 'reset'}
 											<div class=" mt-4 text-sm text-center">
 												{mode === 'signin'

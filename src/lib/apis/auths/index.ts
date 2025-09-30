@@ -324,17 +324,18 @@ export const userSignUp = async (
 	return res;
 };
 
-export const sendEmail = async (email: string) => {
+export const sendEmail = async (email: string, type: string) => {
 	// 向后端api发送一个重置密码的请求
 	let error = null;
 
-	const res = await fetch(`${WEBUI_API_BASE_URL}/auths/send_reset_email`, {
+	const res = await fetch(`${WEBUI_API_BASE_URL}/auths/send_email`, {
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json'
 		},
 		body: JSON.stringify({
-			email: email
+			email: email,
+			type: type
 		})
 	})
 		if (error) {
@@ -457,6 +458,33 @@ export const resetPassword = async (email: string, newPassword: string, token: s
 	}	
 	return res;
 }
+
+export const getEmailType = async (token: string) => {
+	let error = null;
+	const res = await fetch(`${WEBUI_API_BASE_URL}/auths/get_email_type`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json'
+		},
+		body: JSON.stringify({
+			token: token
+		})
+	})
+		.then(async (res) => {
+			if (!res.ok) throw await res.json();
+			return res.json();
+		})
+		.catch((err) => {
+			console.log(err);
+			error = err.detail;
+			return null;
+		});
+	if (error) {
+		throw error;
+	}
+	return res.type;
+}
+
 
 export const userSignOut = async () => {
 	let error = null;

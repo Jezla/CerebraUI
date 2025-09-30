@@ -37,6 +37,7 @@ services:
       - 'ENABLE_PERSISTENT_CONFIG=${ENABLE_PERSISTENT_CONFIG:-false}'
       - 'REDIS_URL=${REDIS_URL:-}'
       - 'DATABASE_URL=${DATABASE_URL:-}'
+      - 'RESEND_API_KEY=${RESEND_API_KEY:-}'
     extra_hosts:
       - host.docker.internal:host-gateway
     networks:
