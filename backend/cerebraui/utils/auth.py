@@ -460,7 +460,7 @@ def generate_otp(email: str, type: str, redis_client: Optional["Redis"] = None):
 
 def verify_otp(email: str, otp: str, redis_client: Optional["Redis"] = None):
     otp_model = None
-    normalized_email = email.lower() if email else email
+    normalized_email = email.lower() if email is not None else None
 
     if normalized_email is not None and otp is not None:
         if redis_client:
