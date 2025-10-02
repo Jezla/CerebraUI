@@ -1,7 +1,7 @@
 # Open WebUI 开发环境启动脚本
 # 功能：启动后端服务器，配置CORS，支持开发模式
 
-Write-Host "Starting Open WebUI Backend Server..." -ForegroundColor Green
+Write-Host "Starting CerebraUI Backend Server..." -ForegroundColor Green
 Write-Host "=====================================" -ForegroundColor Green
 
 #设置CORS环境变量，允许前端访问
@@ -43,7 +43,7 @@ Write-Host "=====================================" -ForegroundColor Green
 
 # 启动后端服务器
 try {
-    uvicorn open_webui.main:app --port=$env:PORT --host=0.0.0.0 --forwarded-allow-ips="*" --reload
+    uvicorn cerebraui.main:app --port=$env:PORT --host=0.0.0.0 --forwarded-allow-ips="*" --reload
 } catch {
     Write-Host "Error starting server: $_" -ForegroundColor Red
     Write-Host "Please check if the port $env:PORT is available" -ForegroundColor Red

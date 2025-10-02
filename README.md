@@ -1,19 +1,19 @@
-# Open WebUI 👋
+# CerebraUI 👋
 
-![GitHub stars](https://img.shields.io/github/stars/open-webui/open-webui?style=social)
-![GitHub forks](https://img.shields.io/github/forks/open-webui/open-webui?style=social)
-![GitHub watchers](https://img.shields.io/github/watchers/open-webui/open-webui?style=social)
-![GitHub repo size](https://img.shields.io/github/repo-size/open-webui/open-webui)
-![GitHub language count](https://img.shields.io/github/languages/count/open-webui/open-webui)
-![GitHub top language](https://img.shields.io/github/languages/top/open-webui/open-webui)
-![GitHub last commit](https://img.shields.io/github/last-commit/open-webui/open-webui?color=red)
-![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2Follama-webui%2Follama-wbui&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=hits&edge_flat=false)
+![GitHub stars](https://img.shields.io/github/stars/Jezla/CerebraUI?style=social)
+![GitHub forks](https://img.shields.io/github/forks/Jezla/CerebraUI?style=social)
+![GitHub watchers](https://img.shields.io/github/watchers/Jezla/CerebraUI?style=social)
+![GitHub repo size](https://img.shields.io/github/repo-size/Jezla/CerebraUI)
+![GitHub language count](https://img.shields.io/github/languages/count/Jezla/CerebraUI)
+![GitHub top language](https://img.shields.io/github/languages/top/Jezla/CerebraUI)
+![GitHub last commit](https://img.shields.io/github/last-commit/Jezla/CerebraUI?color=red)
+![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FJezla%2FCerebraUI&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=hits&edge_flat=false)
 [![Discord](https://img.shields.io/badge/Discord-Open_WebUI-blue?logo=discord&logoColor=white)](https://discord.gg/5rJgQTnV4s)
 [![](https://img.shields.io/static/v1?label=Sponsor&message=%E2%9D%A4&logo=GitHub&color=%23fe8e86)](https://github.com/sponsors/tjbck)
 
 **Open WebUI is an [extensible](https://docs.openwebui.com/features/plugin/), feature-rich, and user-friendly self-hosted AI platform designed to operate entirely offline.** It supports various LLM runners like **Ollama** and **OpenAI-compatible APIs**, with **built-in inference engine** for RAG, making it a **powerful AI deployment solution**.
 
-![Open WebUI Demo](./demo.gif)
+![CerebraUI Demo](./demo.gif)
 
 > [!TIP]  
 > **Looking for an [Enterprise Plan](https://docs.openwebui.com/enterprise)?** – **[Speak with Our Sales Team Today!](mailto:sales@openwebui.com)**
@@ -215,14 +215,14 @@ If you have any questions, suggestions, or need assistance, please open an issue
 
 ## Star History
 
-<a href="https://star-history.com/#open-webui/open-webui&Date">
+<a href="https://star-history.com/#Jezla/CerebraUI&Date">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=open-webui/open-webui&type=Date&theme=dark" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=open-webui/open-webui&type=Date" />
-    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=open-webui/open-webui&type=Date" />
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=Jezla/CerebraUI&type=Date&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=Jezla/CerebraUI&type=Date" />
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=Jezla/CerebraUI&type=Date" />
   </picture>
 </a>
 
 ---
 
-Created by [Timothy Jaeryang Baek](https://github.com/tjbck) - Let's make Open WebUI even more amazing together! 💪
+Let's make CerebraUI even more amazing together! 💪

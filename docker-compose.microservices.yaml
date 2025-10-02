@@ -5,7 +5,7 @@ services:
       context: .
       dockerfile: Dockerfile.frontend
     image: openwebui-frontend:latest
-    container_name: open-webui-frontend
+    container_name: cerebra-ui-frontend
     ports:
       - "${FRONTEND_PORT:-3000}:80"
     depends_on:
@@ -22,9 +22,9 @@ services:
       args:
         OLLAMA_BASE_URL: '/ollama'
     image: openwebui-backend:latest
-    container_name: open-webui-backend
+    container_name: cerebra-ui-backend
     volumes:
-      - open-webui-backend:/app/backend/data
+      - cerebra-ui-backend:/app/backend/data
     depends_on:
       - ollama
       - redis
@@ -102,6 +102,6 @@ networks:
 
 volumes:
   ollama: {}
-  open-webui-backend: {}
+  cerebra-ui-backend: {}
   redis-data: {}
   langflow-data: {}
