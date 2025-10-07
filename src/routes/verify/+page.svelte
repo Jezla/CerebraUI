@@ -268,7 +268,5 @@
 				{/if}
 			</button>
 		</div>
-
-		<a href="/auth" class="block text-sm text-gray-400 hover:underline">{$i18n.t('Sign in')}</a>
 	</div>
 </div>

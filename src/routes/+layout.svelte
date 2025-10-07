@@ -536,14 +536,27 @@
 				const currentUrl = `${window.location.pathname}${window.location.search}`;
 				const encodedUrl = encodeURIComponent(currentUrl);
 
-				if (localStorage.token) {
+                if (localStorage.token) {
 					// Get Session User Info
 					const sessionUser = await getSessionUser(localStorage.token).catch((error) => {
 						toast.error(`${error}`);
 						return null;
 					});
 
-					if (sessionUser) {
+                    if (sessionUser) {
+                        const now = Date.now();
+                        const needsVerification =
+                            (sessionUser.last_active_at &&
+                                now - sessionUser.last_active_at * 1000 > 1000 * 60 * 60 * 48) ||
+                            (sessionUser.created_at && now - sessionUser.created_at * 1000 < 1000 * 60);
+
+                        if (needsVerification && $page.url.pathname !== '/verify' && $page.url.pathname !== '/auth') {
+                            if (!sessionStorage.getItem('email')) {
+                                sessionStorage.setItem('email', sessionUser.email);
+                            }
+                            window.location.replace('/verify');
+                            return;
+                        }
 						// Save Session User to Store
 						$socket.emit('user-join', { auth: { token: sessionUser.token } });
 

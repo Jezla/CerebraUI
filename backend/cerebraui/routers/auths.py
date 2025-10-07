@@ -132,6 +132,8 @@ async def get_session_user(
         "role": user.role,
         "profile_image_url": user.profile_image_url,
         "permissions": user_permissions,
+        "last_active_at": user.last_active_at,
+        "created_at": user.created_at,
     }
 
 
