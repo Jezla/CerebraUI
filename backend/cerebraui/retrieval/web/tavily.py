@@ -26,7 +26,11 @@ def search_tavily(
         list[SearchResult]: A list of search results
     """
     url = "https://api.tavily.com/search"
-    data = {"query": query, "api_key": api_key}
+    data = {
+        "query": query,
+        "api_key": api_key,
+        "max_results": count
+    }
     response = requests.post(url, json=data)
     response.raise_for_status()
 
@@ -39,6 +43,9 @@ def search_tavily(
             link=result["url"],
             title=result.get("title", ""),
             snippet=result.get("content"),
+            engine="tavily",
+            favicon_url=get_favicon_url(result["url"]),
+            domain=get_domain_from_url(result["url"])
         )
         for result in raw_search_results[:count]
     ]

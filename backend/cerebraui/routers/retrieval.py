@@ -1528,6 +1528,10 @@ async def process_web_search(
 
     try:
         urls = [result.link for result in web_results]
+
+        # Create a mapping from URL to SearchResult for preserving metadata
+        url_to_result = {result.link: result for result in web_results}
+
         loader = get_web_loader(
             urls,
             verify_ssl=request.app.state.config.ENABLE_WEB_LOADER_SSL_VERIFICATION,
@@ -1535,15 +1539,31 @@ async def process_web_search(
             trust_env=request.app.state.config.WEB_SEARCH_TRUST_ENV,
         )
         docs = await loader.aload()
-        urls = [
-            doc.metadata["source"] for doc in docs
-        ]  # only keep URLs which could be retrieved
+
+        # Create enhanced search results with both loaded content and original search metadata
+        search_results = []
+        loaded_urls = [doc.metadata["source"] for doc in docs]
+
+        for url in loaded_urls:
+            if url in url_to_result:
+                search_result = url_to_result[url]
+                search_results.append({
+                    "url": url,
+                    "title": search_result.title,
+                    "snippet": search_result.snippet,
+                    "engine": search_result.engine,
+                    "favicon_url": search_result.favicon_url,
+                    "domain": search_result.domain
+                })
 
         if request.app.state.config.BYPASS_WEB_SEARCH_EMBEDDING_AND_RETRIEVAL:
             return {
                 "status": True,
                 "collection_name": None,
-                "filenames": urls,
+                "search_results": search_results,
+                "search_engine": request.app.state.config.WEB_SEARCH_ENGINE,
+                "query": form_data.query,
+                "filenames": loaded_urls,  # Keep for backward compatibility
                 "docs": [
                     {
                         "content": doc.page_content,
@@ -1574,7 +1594,10 @@ async def process_web_search(
             return {
                 "status": True,
                 "collection_names": collection_names,
-                "filenames": urls,
+                "search_results": search_results,
+                "search_engine": request.app.state.config.WEB_SEARCH_ENGINE,
+                "query": form_data.query,
+                "filenames": loaded_urls,  # Keep for backward compatibility
                 "loaded_count": len(docs),
             }
     except Exception as e:
