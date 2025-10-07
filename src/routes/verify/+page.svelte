@@ -84,6 +84,16 @@
 				} else if (type == 'reset') {
 					sessionStorage.setItem('rt', res[1]);
 					goto(`/verify/reset`);
+				} else if (type == 'signup') {
+					toast.success($i18n.t('Email verification successful'));
+					let sessionUser = await getSessionUser(localStorage.token);
+					await finalizeSession(sessionUser);
+					const redirectPath = querystringValue('redirect') || '/';
+					if (redirectPath.includes('/verify') || redirectPath.includes('/reset')) {
+						goto('/');
+					} else {
+						goto(redirectPath);
+					}
 				}
 			} else {
 				toast.error($i18n.t('Verification failed'));

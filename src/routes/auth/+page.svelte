@@ -11,7 +11,8 @@
 		getSessionUser,
 		userSignIn,
 		userSignUp,
-		sendEmail
+		sendEmail,
+		verifyCFToken
 	} from '$lib/apis/auths';
 
 	import { WEBUI_API_BASE_URL, WEBUI_BASE_URL } from '$lib/constants';
@@ -23,7 +24,8 @@
 	import OnBoarding from '$lib/components/OnBoarding.svelte';
 
 	const i18n = getContext('i18n');
-
+	let turnstileToken = '';
+	window.onSuccess = (t) => { turnstileToken = t };
 	let loaded = false;
 
 	let mode = $config?.features.enable_ldap ? 'ldap' : 'signin';
@@ -47,22 +49,32 @@
 			if (sessionUser.token) {
 				localStorage.token = sessionUser.token;
 			}
-			console.log("sessionUser.last_active_at",sessionUser.last_active_at);
+			console.log('sessionUser.last_active_at', sessionUser.last_active_at);
 			if (
 				sessionUser.last_active_at &&
 				Date.now() - sessionUser.last_active_at * 1000 > 1000 * 60 * 48
 			) {
-				// 用户超过48小时未活跃，需要验证
-				toast.warning($i18n.t('You have not logged in for more than 48 hours, please verify your email'));
+				toast.warning(
+					$i18n.t('You have not logged in for more than 48 hours, please verify your email')
+				);
 				console.log('User inactive for more than 48 hours, requiring verification');
-				// 发送验证邮件
 				try {
 					const res = await sendEmail(sessionUser.email, 'signin');
-					// 存储验证信息到sessionStorage
 					sessionStorage.setItem('token', res.token);
 					sessionStorage.setItem('email', sessionUser.email);
-					// 跳转到验证页面
-					await goto("/verify");
+					await goto('/verify');
+					return;
+				} catch (error) {
+					console.error('Failed to send verification email:', error);
+					toast.error('Failed to send verification email');
+				}
+			} else if (sessionUser.created_at && Date.now() - sessionUser.created_at * 1000 < 1000 * 60) {
+				toast.warning($i18n.t('Your account need to be verified, please verify your email'));
+				try {
+					const res = await sendEmail(sessionUser.email, 'signup');
+					sessionStorage.setItem('token', res.token);
+					sessionStorage.setItem('email', sessionUser.email);
+					await goto('/verify');
 					return;
 				} catch (error) {
 					console.error('Failed to send verification email:', error);
@@ -71,7 +83,6 @@
 			}
 
 			await finalizeSession(sessionUser);
-
 
 			const redirectPath = querystringValue('redirect') || '/';
 			if (redirectPath.includes('/verify') || redirectPath.includes('/reset')) {
@@ -83,6 +94,12 @@
 	};
 
 	const signInHandler = async () => {
+		const res = await verifyCFToken(turnstileToken);
+		if (res.success !== true) {
+			toast.error('Verification failed');
+			return;
+		}
+		toast.success('CF Verification successful');
 		const sessionUser = await userSignIn(email, password).catch((error) => {
 			toast.error(`${error}`);
 			return null;
@@ -92,6 +109,12 @@
 	};
 
 	const signUpHandler = async () => {
+		const res = await verifyCFToken(turnstileToken);
+		if (res.success !== true) {
+			toast.error('Verification failed');
+			return;
+		}
+		toast.success('CF Verification successful');
 		const sessionUser = await userSignUp(name, email, password, generateInitialsImage(name)).catch(
 			(error) => {
 				toast.error(`${error}`);
@@ -103,6 +126,12 @@
 	};
 
 	const ldapSignInHandler = async () => {
+		const res = await verifyCFToken(turnstileToken);
+		if (res.success !== true) {
+			toast.error('Verification failed');
+			return;
+		}
+		toast.success('CF Verification successful');
 		const sessionUser = await ldapUserSignIn(ldapUsername, password).catch((error) => {
 			toast.error(`${error}`);
 			return null;
@@ -111,8 +140,14 @@
 	};
 
 	const resetPasswordHandler = async () => {
+		const res = await verifyCFToken(turnstileToken);
+		if (res.success !== true) {
+			toast.error('Verification failed');
+			return;
+		}
+		toast.success('CF Verification successful');
 		try {
-			let res = await sendEmail(email, 'reset');
+			const res = await sendEmail(email, 'reset');
 			console.log(res);
 			if (sessionStorage.getItem('token') !== null) {
 				sessionStorage.removeItem('token');
@@ -214,6 +249,7 @@
 	<title>
 		{`${$WEBUI_NAME}`}
 	</title>
+	<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 </svelte:head>
 
 <OnBoarding
@@ -266,6 +302,7 @@
 					<div class="  my-auto pb-10 w-full dark:text-gray-100">
 						<form
 							class=" flex flex-col justify-center"
+							method="post"
 							on:submit|once={(e) => {
 								e.preventDefault();
 								submitHandler();
@@ -381,6 +418,13 @@
 										</button>
 									{:else}
 										<!-- Main button -->
+										<div
+											class="cf-turnstile"
+											data-sitekey="0x4AAAAAAB2bBXszSarbTbkj"
+											data-theme="auto"
+											data-size="normal"
+											data-callback="onSuccess"
+										></div>
 										<button
 											class="bg-gray-700/5 hover:bg-gray-700/10 dark:bg-gray-100/5 dark:hover:bg-gray-100/10 dark:text-gray-300 dark:hover:text-white transition w-full rounded-full font-medium text-sm py-2.5"
 											type="submit"

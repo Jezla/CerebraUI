@@ -79,10 +79,10 @@ RESEND_API_KEY=your_resend_api_key
 ## File Changes
 
 ### Modified Files
-- `open_webui/routers/auths.py`: Added new API endpoints
-- `open_webui/utils/auth.py`: Added core functionality functions
-- `open_webui/models/otp.py`: Added OTP related models
-- `open_webui/models/auths.py`: Added request/response models
+- `cerebraui/routers/auths.py`: Added new API endpoints
+- `cerebraui/utils/auth.py`: Added core functionality functions
+- `cerebraui/models/otp.py`: Added OTP related models
+- `cerebraui/models/auths.py`: Added request/response models
 
 ## Compatibility
 

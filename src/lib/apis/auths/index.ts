@@ -485,6 +485,32 @@ export const getEmailType = async (token: string) => {
 	return res.type;
 }
 
+export const verifyCFToken = async (token: string) => {
+	let error = null;
+	const res = await fetch(`${WEBUI_API_BASE_URL}/auths/verify_cf_token`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json'
+		},
+		body: JSON.stringify({
+			turnstile_token: token
+		})
+	})
+		.then(async (res) => {
+			if (!res.ok) throw await res.json();
+			return res.json();
+		})
+		.catch((err) => {
+			console.log(err);
+			error = err.detail;
+			return null;
+		});
+	if (error) {
+		throw error;
+	}
+	return res;
+}
+
 
 export const userSignOut = async () => {
 	let error = null;
