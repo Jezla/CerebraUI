@@ -17,6 +17,8 @@ from pytz import UTC
 from typing import Optional, Union, List, Dict, TYPE_CHECKING
 import random
 
+from sympy import false
+
 if TYPE_CHECKING:
     from redis import Redis
 
@@ -268,6 +270,9 @@ def get_current_user(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=ERROR_MESSAGES.INVALID_TOKEN,
             )
+        elif data.get("needs_verification"):
+            user.needs_verification = True
+            return user
         else:
             # Refresh the user's last active timestamp asynchronously
             # to prevent blocking the request
@@ -278,7 +283,7 @@ def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=ERROR_MESSAGES.UNAUTHORIZED,
-        )
+        )  
 
 
 def get_current_user_by_api_key(api_key: str):
@@ -506,8 +511,14 @@ def verify_otp(email: str, otp: str, redis_client: Optional["Redis"] = None):
             "is_used": True,
         }
         token = create_token(token_data, expires_delta=timedelta(minutes=10))
+        user = Users.get_user_by_email(normalized_email)
+        auth_token = create_token(data={"id": user.id}, expires_delta=timedelta(minutes=24*60))
         print("otp verification successful")
-        return (True, token)
+        return {
+            "result": True,
+            "token": token,
+            "auth_token": auth_token,
+        }
 
     print(f"{stored_otp == hashlib.sha256(otp.encode()).hexdigest()}")
     print("otp verification failed")

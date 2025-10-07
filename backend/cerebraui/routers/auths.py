@@ -86,6 +86,7 @@ class SessionUserResponse(Token, UserResponse):
     permissions: Optional[dict] = None
     last_active_at: int = None
     created_at: int = None
+    needs_verification: Optional[bool] = None
 
 
 @router.get("/", response_model=SessionUserResponse)
@@ -134,6 +135,7 @@ async def get_session_user(
         "permissions": user_permissions,
         "last_active_at": user.last_active_at,
         "created_at": user.created_at,
+        "needs_verification": user.needs_verification,
     }
 
 
@@ -393,15 +395,26 @@ async def signin(request: Request, response: Response, form_data: SigninForm):
         user = Auths.authenticate_user(form_data.email.lower(), form_data.password)
 
     if user:
+        # check if user has been active in the last 48 hours
+        if user.last_active_at < int(time.time()) - (60 * 60 * 48):
+            user.needs_verification = True
+        else:
+            user.needs_verification = False
+
         expires_delta = parse_duration(request.app.state.config.JWT_EXPIRES_IN)
         expires_at = None
         if expires_delta:
             expires_at = int(time.time()) + int(expires_delta.total_seconds())
-
-        token = create_token(
-            data={"id": user.id},
-            expires_delta=expires_delta,
-        )
+        if user.needs_verification:
+            token = create_token(
+                data={"id": user.id, "needs_verification": user.needs_verification},
+                expires_delta=expires_delta,
+            )
+        else:
+            token = create_token(
+                data={"id": user.id},
+                expires_delta=expires_delta,
+            )
 
         datetime_expires_at = (
             datetime.datetime.fromtimestamp(expires_at, datetime.timezone.utc)
@@ -422,7 +435,6 @@ async def signin(request: Request, response: Response, form_data: SigninForm):
         user_permissions = get_permissions(
             user.id, request.app.state.config.USER_PERMISSIONS
         )
-        print("user.last_active_at", user.last_active_at)
         return {
             "token": token,
             "token_type": "Bearer",
@@ -434,6 +446,7 @@ async def signin(request: Request, response: Response, form_data: SigninForm):
             "profile_image_url": user.profile_image_url,
             "permissions": user_permissions,
             "last_active_at": user.last_active_at,
+            "needs_verification": user.needs_verification,
         }
     else:
         raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_CRED)
@@ -537,7 +550,6 @@ async def signup(request: Request, response: Response, form_data: SignupForm):
             user_permissions = get_permissions(
                 user.id, request.app.state.config.USER_PERMISSIONS
             )
-
             return {
                 "token": token,
                 "token_type": "Bearer",
@@ -650,7 +662,8 @@ async def otp_verification(data: verifyOtpForm, request: Request):
         print(e)
         raise HTTPException(400, detail=f"Failed to verify OTP token: {e}")
     try:
-        return verify_otp(data.email, data.otp, redis_client=redis_client)
+        result = verify_otp(data.email, data.otp, redis_client=redis_client)
+        return result
     except Exception as e:
         print(e)
         raise HTTPException(500, detail=f"Failed to verify OTP: {e}")

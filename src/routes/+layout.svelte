@@ -543,23 +543,14 @@
 						return null;
 					});
 
-                    if (sessionUser) {
-                        const now = Date.now();
-                        const needsVerification =
-                            (sessionUser.last_active_at &&
-                                now - sessionUser.last_active_at * 1000 > 1000 * 60 * 60 * 48) ||
-                            (sessionUser.created_at && now - sessionUser.created_at * 1000 < 1000 * 60);
-
-                        if (needsVerification && $page.url.pathname !== '/verify' && $page.url.pathname !== '/auth') {
-                            if (!sessionStorage.getItem('email')) {
-                                sessionStorage.setItem('email', sessionUser.email);
-                            }
-                            window.location.replace('/verify');
-                            return;
-                        }
+					if (sessionUser && sessionUser.needs_verification) {
+						localStorage.removeItem('token');
+						console.log("需要验证");
+						goto(`/auth`);
+					}
+                    if (sessionUser && !sessionUser.needs_verification) {
 						// Save Session User to Store
 						$socket.emit('user-join', { auth: { token: sessionUser.token } });
-
 						await user.set(sessionUser);
 						await config.set(await getBackendConfig());
 					} else {

@@ -61,6 +61,8 @@ class UserModel(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+    needs_verification: Optional[bool] = None
+
 
 ####################
 # Forms
