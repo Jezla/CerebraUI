@@ -2,7 +2,7 @@ import logging
 from typing import Optional
 
 import requests
-from cerebraui.retrieval.web.main import SearchResult
+from cerebraui.retrieval.web.main import SearchResult, get_favicon_url, get_domain_from_url
 from cerebraui.env import SRC_LOG_LEVELS
 
 log = logging.getLogger(__name__)
