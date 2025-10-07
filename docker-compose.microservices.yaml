@@ -91,6 +91,7 @@ services:
       - 'TAVILY_API_KEY=${TAVILY_API_KEY:-}'
       - 'ANONYMIZED_TELEMETRY=${ANONYMIZED_TELEMETRY:-false}'
       - 'RESEND_API_KEY=${RESEND_API_KEY:-}'
+      - 'CF_TURNSTILE_SECRET=${CF_TURNSTILE_SECRET:-}'
 
     extra_hosts:
       - host.docker.internal:host-gateway
