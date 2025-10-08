@@ -1,6 +1,6 @@
-# Open WebUI Microservices Architecture Deployment
+# CerebraUI Microservices Architecture Deployment
 
-Deploy Open WebUI as a flexible and scalable microservices architecture with frontend-backend separation.
+Deploy CerebraUI as a flexible and scalable microservices architecture with frontend-backend separation.
 
 ## Architecture Overview
 
@@ -22,7 +22,7 @@ graph TD
         User("👤 User/Browser")
     end
 
-    subgraph "Docker Network (openwebui-network)"
+    subgraph "Docker Network (cerebraui-network)"
         Frontend["Frontend (Nginx)<br>Port: 3000"]
         Backend["Backend (FastAPI)<br>Port: 8080"]
         Langflow["Langflow (AI Workflow)<br>Port: 7860"]
@@ -53,7 +53,7 @@ graph TD
 
 ## Quick Start
 
-Follow these steps to quickly start and run the Open WebUI microservices.
+Follow these steps to quickly start and run the CerebraUI microservices.
 
 ### 1. Environment Configuration
 
@@ -70,7 +70,7 @@ cp .env.example .env
 *   `LANGFLOW_DATABASE_URL`: **Required for Langflow data persistence.** If left empty, Langflow will use a temporary database inside the container, and all your workflows will be lost when the container is removed.
     *   **Action:** We use **Neon** for our PostgreSQL database. To configure this, log into your Neon dashboard, select your project, navigate to **Connection Details**, and copy the full **Postgres URI** (the one that includes your password). Paste this value here.
 
-*   `DATABASE_URL`: **Recommended for Open WebUI data persistence.** The process is the same as for Langflow. Providing a Neon connection string here ensures your user data, chat history, and settings are preserved safely in the cloud. If left empty, a default SQLite database will be used inside a Docker volume, which is less robust.
+*   `DATABASE_URL`: **Recommended for CerebraUI data persistence.** The process is the same as for Langflow. Providing a Neon connection string here ensures your user data, chat history, and settings are preserved safely in the cloud. If left empty, a default SQLite database will be used inside a Docker volume, which is less robust.
 
 *   `TAVILY_API_KEY`: **Required to enable Tavily web search.** If you want to use the Tavily search engine for the web search feature, you must get an API key from the [Tavily website](https://tavily.com/) and paste it here.
 
@@ -134,46 +134,227 @@ You can customize the exposed ports of services in the `.env` file. The core beh
 - `ENABLE_SIGNUP`: Whether to allow user registration.
 - `REDIS_URL`: Redis service address (`redis://redis:6379/0`).
 - `LANGFLOW_DATABASE_URL`: PostgreSQL database connection string for Langflow data persistence. Example: `postgresql://username:password@host:port/database?sslmode=require`
-- `ENABLE_IMAGE_GENERATION`: Set to `True` to enable the native image generation feature in Open WebUI.
+- `ENABLE_IMAGE_GENERATION`: Set to `True` to enable the native image generation feature in CerebraUI.
 - `COMFYUI_BASE_URL`: The internal network address of the ComfyUI service. In this setup, it's `http://comfyui:8188`.
 
 ### ComfyUI Integration (Image Generation)
 
 The integration is enabled via environment variables. Follow these steps to configure it:
 
-**Step 1: Prepare Directories for ComfyUI**
+#### Step 1: Prepare Directories for ComfyUI
 
 ComfyUI requires specific host directories to be mounted for storing models and user data. Create them before starting the services:
 
-```shell
-# Create a parent directory for all ComfyUI data first
-mkdir -p comfyui
+```bash
+# Create a parent directory for all ComfyUI data first  
+mkdir -p comfyui  
 
-# Create the necessary subdirectories inside the comfyui directory
-mkdir -p comfyui/storage
-mkdir -p comfyui/storage-models/models
-mkdir -p comfyui/storage-models/hf-hub
-mkdir -p comfyui/storage-models/torch-hub
-mkdir -p comfyui/storage-user/input
-mkdir -p comfyui/storage-user/output
+# Create the necessary subdirectories inside the comfyui directory  
+mkdir -p comfyui/storage  
+mkdir -p comfyui/storage-models/models  
+mkdir -p comfyui/storage-models/hf-hub  
+mkdir -p comfyui/storage-models/torch-hub  
+mkdir -p comfyui/storage-user/input  
+mkdir -p comfyui/storage-user/output  
 mkdir -p comfyui/storage-user/workflows
+mkdir -p comfyui/user-scripts
 ```
 
-**Step 2: Place Model Files**
- Place your downloaded model files (e.g., FLUX.1, VAEs, CLIPs) into the corresponding host directories, which are mounted into the ComfyUI container. For example:
+#### Step 2: Place Model Files (Optional for Fal API)
 
-- **Checkpoints**: Place in `./comfyui/storage-models/models/checkpoints/` and `./comfyui/storage-models/models/unet/`.
-- **VAE Models**: Place in `./comfyui/storage-models/models/vae/`.
-- **CLIP Models**: Place in `./comfyui/storage-models/models/clip/`.
+Place your downloaded model files (e.g., FLUX.1, VAEs, CLIPs) into the corresponding host directories, which are mounted into the ComfyUI container. For example:
 
-**Step 3: Configure in Open WebUI**
+- **Checkpoints**: Place in `./comfyui/storage-models/models/checkpoints/` and `./comfyui/storage-models/models/unet/`
+- **VAE Models**: Place in `./comfyui/storage-models/models/vae/`
+- **CLIP Models**: Place in `./comfyui/storage-models/models/clip/`
 
-1. Navigate to the **Admin Panel** > **Settings** > **Images** tab in Open WebUI.
-2. The **Image Generation Engine** should be set to `ComfyUI`, and the **API URL** (`http://comfyui:8188`) should be pre-filled.
-3. Click **Verify Connection**. Once successful, enable the **Image Generation (Experimental)** toggle.
-4. In ComfyUI, enable **Dev Mode** (gear icon) and save your workflow using the **Save (API Format)** button to get a `workflow_api.json` file.
-5. Return to Open WebUI and upload this `workflow_api.json` file.
-6. Map the **ComfyUI Workflow Nodes** according to your imported workflow's node IDs and save the settings.
+> **Note**: If using Fal API for cloud-based generation, local model files are not required.
+
+#### Step 3: Install and Configure Fal API Integration
+
+##### 3.1 Create Pre-Start Script
+
+Create a custom startup script that will automatically install fal-client and configure the API key:
+
+```bash
+# Create the pre-start script
+cat > comfyui/user-scripts/pre-start.sh << 'EOF'
+#!/bin/bash
+set -e
+
+echo "########################################"
+echo "[INFO] Running custom pre-start script..."
+echo "########################################"
+
+# Install fal-client
+echo "[INFO] Installing fal-client..."
+pip install --no-cache-dir -U fal-client
+
+# Check if installation was successful
+if python3 -c "import fal_client" 2>/dev/null; then
+    echo "[INFO] fal-client installed successfully"
+else
+    echo "[ERROR] Failed to install fal-client" >&2
+    exit 1
+fi
+
+# Check if ComfyUI-Fal-API-Flux plugin exists
+if [ -d "/root/ComfyUI/custom_nodes/ComfyUI-Fal-API-Flux" ]; then
+    echo "[INFO] ComfyUI-Fal-API-Flux plugin found"
+    
+    CONFIG_FILE="/root/ComfyUI/custom_nodes/ComfyUI-Fal-API-Flux/config.ini"
+    
+    # Update config with environment variable if provided
+    if [ ! -z "$FAL_API_KEY" ]; then
+        echo "[INFO] Updating Fal API key from environment variable..."
+        cat > "$CONFIG_FILE" << INNER_EOF
+[falai]
+api_key = $FAL_API_KEY
+INNER_EOF
+        echo "[INFO] Fal API key configured successfully"
+    elif [ ! -f "$CONFIG_FILE" ]; then
+        echo "[WARNING] Creating config.ini template..."
+        cat > "$CONFIG_FILE" << INNER_EOF
+[falai]
+api_key = your_fal_ai_api_key_here
+INNER_EOF
+        echo "[INFO] Please update the API key in config.ini or set FAL_API_KEY environment variable"
+    fi
+else
+    echo "[INFO] ComfyUI-Fal-API-Flux plugin not found"
+    echo "[INFO] Please install it via ComfyUI Manager after startup"
+fi
+
+echo "[INFO] Pre-start script completed successfully"
+echo "########################################"
+EOF
+
+# Make the script executable
+chmod +x comfyui/user-scripts/pre-start.sh
+```
+
+##### 3.2 Configure Fal API Key
+
+Update your `.env` file in the CerebraUI project root:
+
+```bash
+# Fal API Configuration
+FAL_API_KEY=your_fal_ai_api_key_here
+```
+
+**To get your Fal API Key:**
+1. Visit [https://fal.ai](https://fal.ai)
+2. Register and login to your account
+3. Navigate to Dashboard → API Keys
+4. Create a new API key and copy it
+
+##### 3.3 Install ComfyUI-Fal-API-Flux Plugin
+
+1. Open ComfyUI in your web browser at `http://localhost:8188`
+2. Click **Manager** on the top-right bar
+3. Select **Custom Nodes Manager**
+4. Search for "ComfyUI-Fal-API-Flux" and install it
+5. The plugin **ComfyUI-Fal-API-Flux** will be installed from: [https://github.com/yhayano-ponotech/ComfyUI-Fal-API-Flux](https://github.com/yhayano-ponotech/ComfyUI-Fal-API-Flux)
+6. Restart ComfyUI: `docker-compose restart comfyui`
+
+##### 3.4 Verify Installation
+
+```
+# Enter the ComfyUI container  
+docker exec -it comfyui bash
+
+# View python package installation
+pip list | grep fal_client
+fal_client                     0.8.0
+```
+
+```
+# View API key configuration
+cat /root/ComfyUI/custom_nodes/ComfyUI-Fal-API-Flux/config.ini
+```
+
+The config.ini file should look like this:
+
+```
+[falai]  
+api_key = fal_your_actual_api_key_here
+```
+
+#### Step 4: Configure in CerebraUI
+
+1. Navigate to the **Admin Panel** > **Settings** > **Images** tab in CerebraUI
+2. The **Image Generation Engine** should be set to `ComfyUI`, and the **API URL** (`http://comfyui:8188`) should be pre-filled
+3. Click **Verify Connection**. Once successful, enable the **Image Generation (Experimental)** toggle
+4. In ComfyUI, enable **Dev Mode** (gear icon) and save your workflow using the **Save (API Format)** button to get a `workflow_api.json` file
+5. Return to CerebraUI and upload this `workflow_api.json` file
+6. Map the **ComfyUI Workflow Nodes** according to your imported workflow's node IDs and save the settings
+
+#### Step 5: Configure Workflow Node Mapping
+
+Based on your Fal API Flux workflow, configure the node mapping as follows:
+
+##### ComfyUI Workflow Nodes Configuration:
+
+| Parameter   | Input Key | Node IDs      | Description                      |
+| ----------- | --------- | ------------- | -------------------------------- |
+| **prompt*** | prompt    | 1             | Text prompt for image generation |
+| **model**   | ckpt_name | (leave empty) | Not needed for Fal API           |
+| **width**   | width     | 1             | Image width in pixels            |
+| **height**  | height    | 1             | Image height in pixels           |
+| **steps**   | steps     | 1             | Number of inference steps        |
+| **seed**    | seed      | 1             | Random seed for reproducibility  |
+
+> ***Prompt node ID(s) are required for image generation**
+
+##### Default Settings:
+
+- **Set Default Model**: `fal-flux-dev`
+- **Set Image Size**: `1024x1024` (recommended for Flux models)
+- **Set Steps**: `28`
+
+##### Example Configuration:
+
+```
+ComfyUI Workflow Nodes:
+├── prompt*: 1
+├── model: (empty)
+├── width: 1  
+├── height: 1
+├── steps: 1
+└── seed: 1
+
+Default Settings:
+├── Set Default Model: fal-flux-dev
+├── Set Image Size: 1024x1024
+└── Set Steps: 28
+```
+
+Click **Save** to apply the settings.
+
+#### Step 6: Test the Integration
+
+1. In CerebraUI chat interface, try generating an image by typing: "Generate an image of a beautiful sunset over mountains"
+2. The system should use the Fal API through ComfyUI to generate the image
+3. Check the ComfyUI logs if there are any issues: `docker logs comfyui`
+
+#### Troubleshooting
+
+- **Connection Issues**: Ensure ComfyUI container is running and accessible
+- **API Key Issues**: Verify the Fal API key is correctly configured in `config.ini`
+- **Node Mapping Issues**: Check that node IDs match your workflow structure
+- **Plugin Issues**: Restart ComfyUI after installing the Fal API plugin
+- **Configuration File**: If config.ini doesn't exist after plugin installation, create it manually in the plugin directory
+
+#### Benefits of Using Fal API
+
+- **No Local Models Required**: Uses cloud-based Flux models
+- **Faster Setup**: No need to download large model files
+- **Always Updated**: Access to latest model versions
+- **Scalable**: No local GPU memory limitations
+
+This setup allows you to use powerful Flux models for image generation through CerebraUI without requiring local model storage or high-end hardware.
+
+
 
 ### MCP Server Configuration (AI Tools)
 
@@ -185,7 +366,7 @@ The tools available to the AI model are defined in the `mcp-config.json` file, w
 
 **Core Concept: Proxy Chain**
  For services that don't natively speak MCP, like Langflow, we use a proxy chain:
- `Open WebUI` → `mcpo-server (OpenAPI)` → `mcp-proxy (stdio)` → `Langflow (SSE)`
+ `CerebraUI` → `mcpo-server (OpenAPI)` → `mcp-proxy (stdio)` → `Langflow (SSE)`
 
 The `mcp-proxy` tool translates Langflow's SSE stream into the MCP protocol that the `mcpo-server` understands.
 
@@ -217,7 +398,7 @@ The `mcp-proxy` tool translates Langflow's SSE stream into the MCP protocol that
    docker compose -f docker-compose.microservices.yaml up -d --force-recreate mcpo-server
    ```
 
-3. **Add Tool in Open WebUI**: Go to **Admin Panel** > **Tools** and click **Add Tool Server**. Enter the URL corresponding to your new tool, using the key you defined in the config file:
+3. **Add Tool in CerebraUI**: Go to **Admin Panel** > **Tools** and click **Add Tool Server**. Enter the URL corresponding to your new tool, using the key you defined in the config file:
     `http://mcpo-server:8000/your_langflow_tool`
 
 
@@ -292,7 +473,7 @@ After modifying your configuration, restart the services to apply the new settin
 docker compose -f docker-compose.microservices.yaml up -d --force-recreate backend
 ```
 
-Your Open WebUI instance is now configured to use Tavily for web search functionality.
+Your CerebraUI instance is now configured to use Tavily for web search functionality.
 
 
 
