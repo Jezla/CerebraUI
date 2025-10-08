@@ -513,6 +513,7 @@ def verify_otp(email: str, otp: str, redis_client: Optional["Redis"] = None):
         token = create_token(token_data, expires_delta=timedelta(minutes=10))
         user = Users.get_user_by_email(normalized_email)
         auth_token = create_token(data={"id": user.id}, expires_delta=timedelta(minutes=24*60))
+        Users.update_user_is_email_verified_by_id(user.id, True)
         print("otp verification successful")
         return {
             "result": True,

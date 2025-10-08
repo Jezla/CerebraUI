@@ -44,9 +44,11 @@
 	import i18n, { initI18n, getLanguages, changeLanguage } from '$lib/i18n';
 	import { bestMatchingLanguage } from '$lib/utils';
 	import { getAllTags, getChatList } from '$lib/apis/chats';
+	import { sendEmail } from '$lib/apis/auths';
 	import NotificationToast from '$lib/components/NotificationToast.svelte';
 	import AppSidebar from '$lib/components/app/AppSidebar.svelte';
 	import { chatCompletion } from '$lib/apis/openai';
+	import { error } from '@sveltejs/kit';
 
 	setContext('i18n', i18n);
 
@@ -542,11 +544,23 @@
 						toast.error(`${error}`);
 						return null;
 					});
-
+					console.log('路由守卫获得的sessionUser', sessionUser);
+					// Sign email verification
 					if (sessionUser && sessionUser.needs_verification) {
 						localStorage.removeItem('token');
+						sessionStorage.removeItem('token');
+						sessionStorage.removeItem('email');
 						console.log("需要验证");
-						goto(`/auth`);
+						await goto(`/auth`);
+						return;
+					}
+					// Sign up email verification
+					if (sessionUser && !sessionUser.is_email_verified) {
+						localStorage.removeItem('token');
+						sessionStorage.removeItem('token');
+						sessionStorage.removeItem('email');
+						await goto(`/auth`);
+						return;
 					}
                     if (sessionUser && !sessionUser.needs_verification) {
 						// Save Session User to Store

@@ -26,7 +26,9 @@
 
 	const i18n = getContext('i18n');
 	let turnstileToken = '';
-	window.onSuccess = (t) => { turnstileToken = t };
+	window.onSuccess = (t) => {
+		turnstileToken = t;
+	};
 	let loaded = false;
 
 	let mode = $config?.features.enable_ldap ? 'ldap' : 'signin';
@@ -71,8 +73,8 @@
 			toast.error(`${error}`);
 			return null;
 		});
-		if (sessionUser.needs_verification) {
-			const res = await sendEmail(sessionUser.email, 'signin').catch((error) => {	
+		if (sessionUser.needs_verification || !sessionUser.is_email_verified) {
+			const res = await sendEmail(sessionUser.email, 'signin').catch((error) => {
 				toast.error(`${error.detail}`);
 				return null;
 			});
@@ -94,23 +96,19 @@
 		toast.success('CF Verification successful');
 		const sessionUser = await userSignUp(name, email, password, generateInitialsImage(name)).catch(
 			(error) => {
-				toast.error(`${error}`);
+				toast.error(`${error.detail}`);
 				return null;
 			}
 		);
-		if (sessionUser.needs_verification) {
-			const res = await sendEmail(sessionUser.email, 'signup').catch((error) => {
-				toast.error(`${error.detail}`);
-				return null;
-			});
-			localStorage.token = sessionUser.token;
-			sessionStorage.setItem('token', res.token);
-			sessionStorage.setItem('email', sessionUser.email);
-			await goto('/verify');
-			return;
-		}
 
-		await setSessionUser(sessionUser);
+		const verifyRes = await sendEmail(sessionUser.email, 'signup').catch((error) => {
+			toast.error(`${error.detail}`);
+			return null;
+		});
+		localStorage.token = sessionUser.token;
+		sessionStorage.setItem('token', verifyRes.token);
+		sessionStorage.setItem('email', sessionUser.email);
+		await goto('/verify');
 	};
 
 	const ldapSignInHandler = async () => {

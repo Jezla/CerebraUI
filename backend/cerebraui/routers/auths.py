@@ -87,6 +87,7 @@ class SessionUserResponse(Token, UserResponse):
     last_active_at: int = None
     created_at: int = None
     needs_verification: Optional[bool] = None
+    is_email_verified: bool = None
 
 
 @router.get("/", response_model=SessionUserResponse)
@@ -136,6 +137,7 @@ async def get_session_user(
         "last_active_at": user.last_active_at,
         "created_at": user.created_at,
         "needs_verification": user.needs_verification,
+        "is_email_verified": user.is_email_verified,
     }
 
 
@@ -447,6 +449,7 @@ async def signin(request: Request, response: Response, form_data: SigninForm):
             "permissions": user_permissions,
             "last_active_at": user.last_active_at,
             "needs_verification": user.needs_verification,
+            "is_email_verified": user.is_email_verified,
         }
     else:
         raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_CRED)
