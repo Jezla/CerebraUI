@@ -33,7 +33,7 @@
 	import { Toaster, toast } from 'svelte-sonner';
 
 	import { executeToolServer, getBackendConfig } from '$lib/apis';
-	import { getSessionUser} from '$lib/apis/auths';
+	import { getSessionUser } from '$lib/apis/auths';
 
 	import '../tailwind.css';
 	import '../app.css';
@@ -538,7 +538,7 @@
 				const currentUrl = `${window.location.pathname}${window.location.search}`;
 				const encodedUrl = encodeURIComponent(currentUrl);
 
-                if (localStorage.token) {
+				if (localStorage.token) {
 					// Get Session User Info
 					const sessionUser = await getSessionUser(localStorage.token).catch((error) => {
 						toast.error(`${error}`);
@@ -550,8 +550,12 @@
 						localStorage.removeItem('token');
 						sessionStorage.removeItem('token');
 						sessionStorage.removeItem('email');
-						console.log("需要验证");
-						await goto(`/auth`);
+						console.log('需要验证');
+						document.getElementById('splash-screen')?.remove();
+						loaded = true;
+						if ($page.url.pathname !== '/auth' && $page.url.pathname !== '/verify') {
+							goto(`/auth?redirect=${encodedUrl}`);
+						}
 						return;
 					}
 					// Sign up email verification
@@ -559,10 +563,14 @@
 						localStorage.removeItem('token');
 						sessionStorage.removeItem('token');
 						sessionStorage.removeItem('email');
-						await goto(`/auth`);
+						document.getElementById('splash-screen')?.remove();
+						loaded = true;
+						if ($page.url.pathname !== '/auth' && $page.url.pathname !== '/verify') {
+							goto(`/auth?redirect=${encodedUrl}`);
+						}
 						return;
 					}
-                    if (sessionUser && !sessionUser.needs_verification) {
+					if (sessionUser && !sessionUser.needs_verification) {
 						// Save Session User to Store
 						$socket.emit('user-join', { auth: { token: sessionUser.token } });
 						await user.set(sessionUser);

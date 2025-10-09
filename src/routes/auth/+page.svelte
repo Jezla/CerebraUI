@@ -96,19 +96,20 @@
 		toast.success('CF Verification successful');
 		const sessionUser = await userSignUp(name, email, password, generateInitialsImage(name)).catch(
 			(error) => {
-				toast.error(`${error.detail}`);
-				return null;
+				toast.error(`${error}`);
+				return;
 			}
 		);
-
-		const verifyRes = await sendEmail(sessionUser.email, 'signup').catch((error) => {
-			toast.error(`${error.detail}`);
-			return null;
-		});
-		localStorage.token = sessionUser.token;
-		sessionStorage.setItem('token', verifyRes.token);
-		sessionStorage.setItem('email', sessionUser.email);
-		await goto('/verify');
+		if (sessionUser) {
+			const verifyRes = await sendEmail(sessionUser.email, 'signup').catch((error) => {
+				toast.error(`${error.detail}`);
+				return;
+			});
+			localStorage.token = sessionUser.token;
+			sessionStorage.setItem('token', verifyRes.token);
+			sessionStorage.setItem('email', sessionUser.email);
+			await goto('/verify');
+		}
 	};
 
 	const ldapSignInHandler = async () => {
