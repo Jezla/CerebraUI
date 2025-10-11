@@ -78,6 +78,8 @@
 			const res = await verifyOtp(email, code, token);
 			console.log('Verify otp result：', res);
 			if (res.result == true) {
+				console.log(res);
+				
 				if (type == 'signin') {
 					let sessionUser = await getSessionUser(res.auth_token);
 					await finalizeSession(sessionUser);
@@ -89,8 +91,13 @@
 						goto(redirectPath);
 					}
 				} else if (type == 'reset') {
-					sessionStorage.setItem('rt', res[1]);
-					goto(`/verify/reset`);
+					if (res.token) {
+					sessionStorage.setItem('rt', res.token);
+					sessionStorage.removeItem('token');
+						goto(`/verify/reset`);
+					} else {
+						toast.error($i18n.t('No rt'));
+					}
 				} else if (type == 'signup') {
 					toast.success($i18n.t('Email verification successful'));
 					let sessionUser = await getSessionUser(res.auth_token);
