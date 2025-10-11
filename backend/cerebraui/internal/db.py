@@ -2,6 +2,7 @@ import json
 import logging
 from contextlib import contextmanager
 from typing import Any, Optional
+import os
 
 from cerebraui.internal.wrappers import register_connection
 from cerebraui.env import (
@@ -72,7 +73,9 @@ def handle_peewee_migration(DATABASE_URL):
         assert db.is_closed(), "Database connection is still open."
 
 
-handle_peewee_migration(DATABASE_URL)
+if not os.environ.get("SKIP_PEEWEE_MIGRATIONS"):
+    handle_peewee_migration(DATABASE_URL)
+
 
 
 SQLALCHEMY_DATABASE_URL = DATABASE_URL

@@ -9,7 +9,7 @@ from cerebraui.models.groups import Groups
 
 
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy import BigInteger, Column, String, Text
+from sqlalchemy import BigInteger, Column, String, Text, Boolean
 
 ####################
 # User DB Schema
@@ -34,6 +34,8 @@ class User(Base):
     info = Column(JSONField, nullable=True)
 
     oauth_sub = Column(Text, unique=True)
+
+    is_email_verified = Column(Boolean, default=False)
 
 
 class UserSettings(BaseModel):
@@ -61,6 +63,9 @@ class UserModel(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+    needs_verification: Optional[bool] = None
+
+    is_email_verified: Optional[bool] = None
 
 ####################
 # Forms
@@ -118,7 +123,7 @@ class UsersTable:
                     "oauth_sub": oauth_sub,
                 }
             )
-            result = User(**user.model_dump())
+            result = User(**user.model_dump(exclude_none=True, exclude={'needs_verification'}))
             db.add(result)
             db.commit()
             db.refresh(result)
@@ -330,5 +335,15 @@ class UsersTable:
             users = db.query(User).filter(User.id.in_(user_ids)).all()
             return [user.id for user in users]
 
+    def update_user_is_email_verified_by_id(self, id: str, is_email_verified: bool) -> Optional[UserModel]:
+        try:
+            with get_db() as db:
+                db.query(User).filter_by(id=id).update({"is_email_verified": is_email_verified})
+                db.commit()
+
+                user = db.query(User).filter_by(id=id).first()
+                return UserModel.model_validate(user)
+        except Exception:
+            return None
 
 Users = UsersTable()

@@ -1,6 +1,13 @@
 <script>
 	import { onMount, onDestroy, getContext } from 'svelte';
-	import { verifyOtp, verifyToken, sendEmail, getEmailType, getSessionUser } from '$lib/apis/auths';
+	import {
+		verifyOtp,
+		verifyToken,
+		sendEmail,
+		getEmailType,
+		getSessionUser,
+		userSignOut
+	} from '$lib/apis/auths';
 	import { finalizeSession } from '$lib/services/session';
 	import { toast } from 'svelte-sonner';
 	import { goto } from '$app/navigation';
@@ -42,8 +49,7 @@
 		console.log('Start checking token...');
 		if (!token) {
 			console.log('token is empty');
-			toast.error($i18n.t('Invalid session'));
-			goto('/auth');
+			toast.warning($i18n.t('Please click "Resend code" to get a verification code'));
 			return;
 		}
 		const res = await verifyToken(email, token);
@@ -51,10 +57,11 @@
 		if (res == true) {
 			toast.success($i18n.t('Token verification successful'));
 		} else {
-			toast.error($i18n.t('Session expired'));
+			toast.error($i18n.t('Session expired, please login again'));
 			sessionStorage.removeItem('token');
 			sessionStorage.removeItem('email');
-			goto('/auth');
+			await userSignOut();
+			localStorage.removeItem('token');
 		}
 	};
 	// Verify otp
@@ -70,9 +77,9 @@
 		try {
 			const res = await verifyOtp(email, code, token);
 			console.log('Verify otp result：', res);
-			if (res[0] == true) {
+			if (res.result == true) {
 				if (type == 'signin') {
-					let sessionUser = await getSessionUser(localStorage.token);
+					let sessionUser = await getSessionUser(res.auth_token);
 					await finalizeSession(sessionUser);
 					toast.success($i18n.t('Email verification successful'));
 					const redirectPath = querystringValue('redirect') || '/';
@@ -86,7 +93,7 @@
 					goto(`/verify/reset`);
 				} else if (type == 'signup') {
 					toast.success($i18n.t('Email verification successful'));
-					let sessionUser = await getSessionUser(localStorage.token);
+					let sessionUser = await getSessionUser(res.auth_token);
 					await finalizeSession(sessionUser);
 					const redirectPath = querystringValue('redirect') || '/';
 					if (redirectPath.includes('/verify') || redirectPath.includes('/reset')) {
@@ -268,7 +275,5 @@
 				{/if}
 			</button>
 		</div>
-
-		<a href="/auth" class="block text-sm text-gray-400 hover:underline">{$i18n.t('Sign in')}</a>
 	</div>
 </div>

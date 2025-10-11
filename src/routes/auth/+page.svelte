@@ -12,7 +12,8 @@
 		userSignIn,
 		userSignUp,
 		sendEmail,
-		verifyCFToken
+		verifyCFToken,
+		userSignOut
 	} from '$lib/apis/auths';
 
 	import { WEBUI_API_BASE_URL, WEBUI_BASE_URL } from '$lib/constants';
@@ -25,7 +26,9 @@
 
 	const i18n = getContext('i18n');
 	let turnstileToken = '';
-	window.onSuccess = (t) => { turnstileToken = t };
+	window.onSuccess = (t) => {
+		turnstileToken = t;
+	};
 	let loaded = false;
 
 	let mode = $config?.features.enable_ldap ? 'ldap' : 'signin';
@@ -49,41 +52,7 @@
 			if (sessionUser.token) {
 				localStorage.token = sessionUser.token;
 			}
-			console.log('sessionUser.last_active_at', sessionUser.last_active_at);
-			if (
-				sessionUser.last_active_at &&
-				Date.now() - sessionUser.last_active_at * 1000 > 1000 * 60 * 48
-			) {
-				toast.warning(
-					$i18n.t('You have not logged in for more than 48 hours, please verify your email')
-				);
-				console.log('User inactive for more than 48 hours, requiring verification');
-				try {
-					const res = await sendEmail(sessionUser.email, 'signin');
-					sessionStorage.setItem('token', res.token);
-					sessionStorage.setItem('email', sessionUser.email);
-					await goto('/verify');
-					return;
-				} catch (error) {
-					console.error('Failed to send verification email:', error);
-					toast.error('Failed to send verification email');
-				}
-			} else if (sessionUser.created_at && Date.now() - sessionUser.created_at * 1000 < 1000 * 60) {
-				toast.warning($i18n.t('Your account need to be verified, please verify your email'));
-				try {
-					const res = await sendEmail(sessionUser.email, 'signup');
-					sessionStorage.setItem('token', res.token);
-					sessionStorage.setItem('email', sessionUser.email);
-					await goto('/verify');
-					return;
-				} catch (error) {
-					console.error('Failed to send verification email:', error);
-					toast.error('Failed to send verification email');
-				}
-			}
-
 			await finalizeSession(sessionUser);
-
 			const redirectPath = querystringValue('redirect') || '/';
 			if (redirectPath.includes('/verify') || redirectPath.includes('/reset')) {
 				goto('/');
@@ -104,7 +73,17 @@
 			toast.error(`${error}`);
 			return null;
 		});
-
+		if (sessionUser.needs_verification || !sessionUser.is_email_verified) {
+			const res = await sendEmail(sessionUser.email, 'signin').catch((error) => {
+				toast.error(`${error.detail}`);
+				return null;
+			});
+			localStorage.token = sessionUser.token;
+			sessionStorage.setItem('token', res.token);
+			sessionStorage.setItem('email', sessionUser.email);
+			await goto('/verify');
+			return;
+		}
 		await setSessionUser(sessionUser);
 	};
 
@@ -118,11 +97,19 @@
 		const sessionUser = await userSignUp(name, email, password, generateInitialsImage(name)).catch(
 			(error) => {
 				toast.error(`${error}`);
-				return null;
+				return;
 			}
 		);
-
-		await setSessionUser(sessionUser);
+		if (sessionUser) {
+			const verifyRes = await sendEmail(sessionUser.email, 'signup').catch((error) => {
+				toast.error(`${error.detail}`);
+				return;
+			});
+			localStorage.token = sessionUser.token;
+			sessionStorage.setItem('token', verifyRes.token);
+			sessionStorage.setItem('email', sessionUser.email);
+			await goto('/verify');
+		}
 	};
 
 	const ldapSignInHandler = async () => {
