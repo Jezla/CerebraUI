@@ -544,13 +544,11 @@
 						toast.error(`${error}`);
 						return null;
 					});
-					console.log('路由守卫获得的sessionUser', sessionUser);
 					// Sign email verification
 					if (sessionUser && sessionUser.needs_verification) {
 						localStorage.removeItem('token');
 						sessionStorage.removeItem('token');
 						sessionStorage.removeItem('email');
-						console.log('需要验证');
 						document.getElementById('splash-screen')?.remove();
 						loaded = true;
 						if ($page.url.pathname !== '/auth' && $page.url.pathname !== '/verify') {
