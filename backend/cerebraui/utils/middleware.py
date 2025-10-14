@@ -533,10 +533,43 @@ async def chat_image_generation_handler(
 
     system_message_content = ""
 
+    # Extract image from recent messages for image-to-image generation
+    input_image = None
+    for message in reversed(messages):
+        if message.get("role") == "user":
+            # Check if message has files with images
+            if "files" in message:
+                for file in message["files"]:
+                    if file.get("type") == "image" and file.get("url"):
+                        input_image = file["url"]
+                        log.info(f"Found input image in chat: {input_image[:100]}...")
+                        break
+            # Also check content array format for images
+            if isinstance(message.get("content"), list):
+                for content_item in message["content"]:
+                    if isinstance(content_item, dict) and content_item.get("type") == "image_url":
+                        image_url = content_item.get("image_url", {})
+                        if isinstance(image_url, dict):
+                            input_image = image_url.get("url")
+                        else:
+                            input_image = image_url
+                        if input_image:
+                            log.info(f"Found input image in content: {input_image[:100]}...")
+                            break
+            if input_image:
+                break
+
+    # Build image generation parameters
+    generation_params = {"prompt": prompt}
+    if input_image:
+        generation_params["image"] = input_image
+        generation_params["strength"] = 0.7  # Default strength for img2img
+        log.info("Using image-to-image generation with input image")
+
     try:
         images = await image_generations(
             request=request,
-            form_data=GenerateImageForm(**{"prompt": prompt}),
+            form_data=GenerateImageForm(**generation_params),
             user=user,
         )
 
@@ -562,7 +595,13 @@ async def chat_image_generation_handler(
             }
         )
 
-        system_message_content = "<context>User is shown the generated image, tell the user that the image has been generated</context>"
+        # Different system message for img2img vs text2img
+        if input_image:
+            # For image-to-image: inform AI that the image modification is complete
+            system_message_content = "<context>The user's image has been successfully modified and the result is now displayed. Briefly confirm the modification is complete.</context>"
+        else:
+            # For text-to-image: inform AI that image was generated
+            system_message_content = "<context>User is shown the generated image, tell the user that the image has been generated</context>"
     except Exception as e:
         log.exception(e)
         await __event_emitter__(
