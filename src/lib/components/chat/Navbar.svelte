@@ -2,32 +2,33 @@
 	import { getContext } from 'svelte';
 	import { toast } from 'svelte-sonner';
 
-	import {
-		WEBUI_NAME,
-		banners,
-		chatId,
-		config,
-		mobile,
-		settings,
-		showArchivedChats,
-		showControls,
-		showSidebar,
-		temporaryChatEnabled,
-		user
-	} from '$lib/stores';
+import {
+	WEBUI_NAME,
+	banners,
+	chatId,
+	config,
+	mobile,
+	settings,
+	showArchivedChats,
+	showControls,
+	showSidebar,
+	temporaryChatEnabled,
+	user,
+	deepResearch
+} from '$lib/stores';
 
-	import { slide } from 'svelte/transition';
-	import { page } from '$app/stores';
+import { slide } from 'svelte/transition';
+import { page } from '$app/stores';
 
 	import ShareChatModal from '../chat/ShareChatModal.svelte';
 	import ModelSelector from '../chat/ModelSelector.svelte';
 	import Tooltip from '../common/Tooltip.svelte';
 	import Menu from '$lib/components/layout/Navbar/Menu.svelte';
 	import UserMenu from '$lib/components/layout/Sidebar/UserMenu.svelte';
-	import MenuLines from '../icons/MenuLines.svelte';
-	import AdjustmentsHorizontal from '../icons/AdjustmentsHorizontal.svelte';
-
-	import PencilSquare from '../icons/PencilSquare.svelte';
+import MenuLines from '../icons/MenuLines.svelte';
+import AdjustmentsHorizontal from '../icons/AdjustmentsHorizontal.svelte';
+import PencilSquare from '../icons/PencilSquare.svelte';
+import { Research } from '$lib/components/icons';
 	import Banner from '../common/Banner.svelte';
 
 	const i18n = getContext('i18n');
@@ -84,7 +85,7 @@
 					{/if}
 				</div>
 
-				<div class="self-start flex flex-none items-center text-gray-600 dark:text-gray-400">
+                <div class="self-start flex flex-none items-center text-gray-600 dark:text-gray-400 gap-1">
 					<!-- <div class="md:hidden flex self-center w-[1px] h-5 mx-2 bg-gray-300 dark:bg-stone-700" /> -->
 					{#if shareEnabled && chat && (chat.id || $temporaryChatEnabled)}
 						<Menu
@@ -119,6 +120,27 @@
 								</div>
 							</button>
 						</Menu>
+					{/if}
+
+					{#if $deepResearch.enabled}
+						<Tooltip content={$i18n.t('Deep Research')}>
+							<button
+								class="flex cursor-pointer px-2 py-2 rounded-xl transition {$deepResearch.showPanel
+									? 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400'
+									: 'hover:bg-gray-50 dark:hover:bg-gray-850'}"
+								on:click={() => {
+									deepResearch.update((state) => ({
+										...state,
+										showPanel: !state.showPanel
+									}));
+								}}
+								aria-label="Deep Research"
+							>
+								<div class="m-auto self-center">
+									<Research className="size-5" strokeWidth="1.7" />
+								</div>
+							</button>
+						</Tooltip>
 					{/if}
 
 					<Tooltip content={$i18n.t('Controls')}>

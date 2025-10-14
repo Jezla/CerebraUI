@@ -60,6 +60,21 @@ export const functions = writable(null);
 export const toolServers = writable([]);
 
 export const banners: Writable<Banner[]> = writable([]);
+export type DeepResearchState = {
+	enabled: boolean;
+	showPanel: boolean;
+	runId: string | null;
+	isStreaming: boolean;
+	log: string;
+};
+
+export const deepResearch = writable<DeepResearchState>({
+	enabled: false,
+	showPanel: false,
+	runId: null,
+	isStreaming: false,
+	log: ''
+});
 
 export const settings: Writable<Settings> = writable({
 	chatDirection: 'LTR'

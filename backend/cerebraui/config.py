@@ -2043,6 +2043,30 @@ YOUTUBE_LOADER_PROXY_URL = PersistentConfig(
 # Web Search (RAG)
 ####################################
 
+ENABLE_DEEP_RESEARCH = PersistentConfig(
+    "ENABLE_DEEP_RESEARCH",
+    "deep_research.enable",
+    os.environ.get("ENABLE_DEEP_RESEARCH", "False").lower() == "true",
+)
+
+DEEP_RESEARCH_BASE_URL = PersistentConfig(
+    "DEEP_RESEARCH_BASE_URL",
+    "deep_research.base_url",
+    os.environ.get("DEEP_RESEARCH_BASE_URL", ""),
+)
+
+DEEP_RESEARCH_API_KEY = PersistentConfig(
+    "DEEP_RESEARCH_API_KEY",
+    "deep_research.api_key",
+    os.environ.get("DEEP_RESEARCH_API_KEY", ""),
+)
+
+DEEP_RESEARCH_WORKFLOW_ID = PersistentConfig(
+    "DEEP_RESEARCH_WORKFLOW_ID",
+    "deep_research.workflow_id",
+    os.environ.get("DEEP_RESEARCH_WORKFLOW_ID", ""),
+)
+
 ENABLE_WEB_SEARCH = PersistentConfig(
     "ENABLE_WEB_SEARCH",
     "rag.web.search.enable",

@@ -14,30 +14,32 @@
 	import type { i18n as i18nType } from 'i18next';
 	import { WEBUI_BASE_URL } from '$lib/constants';
 
-	import {
-		chatId,
-		chats,
-		config,
-		type Model,
-		models,
-		tags as allTags,
-		settings,
-		showSidebar,
-		WEBUI_NAME,
-		banners,
-		user,
-		socket,
-		showControls,
-		showCallOverlay,
-		currentChatPage,
-		temporaryChatEnabled,
-		mobile,
-		showOverview,
-		chatTitle,
-		showArtifacts,
-		tools,
-		toolServers
-	} from '$lib/stores';
+import {
+	chatId,
+	chats,
+	config,
+	type Model,
+	models,
+	tags as allTags,
+	settings,
+	showSidebar,
+	WEBUI_NAME,
+	banners,
+	user,
+	socket,
+	showControls,
+	showCallOverlay,
+	currentChatPage,
+	temporaryChatEnabled,
+	mobile,
+	showOverview,
+	chatTitle,
+	showArtifacts,
+	tools,
+	toolServers,
+	deepResearch
+} from '$lib/stores';
+	import { startDeepResearch } from '$lib/apis';
 	import {
 		convertMessagesToHistory,
 		copyToClipboard,
@@ -86,16 +88,50 @@
 	import ChatControls from './ChatControls.svelte';
 	import EventConfirmDialog from '../common/ConfirmDialog.svelte';
 	import Placeholder from './Placeholder.svelte';
-	import NotificationToast from '../NotificationToast.svelte';
-	import Spinner from '../common/Spinner.svelte';
+import NotificationToast from '../NotificationToast.svelte';
+import Spinner from '../common/Spinner.svelte';
+import DeepResearchPanel from './DeepResearchPanel.svelte';
 
-	export let chatIdProp = '';
+export let chatIdProp = '';
 
-	let loading = false;
+let loading = false;
 
-	const eventTarget = new EventTarget();
-	let controlPane;
-	let controlPaneComponent;
+const eventTarget = new EventTarget();
+let controlPane;
+let controlPaneComponent;
+let token = '';
+let deepResearchInput = '';
+let deepResearchLoading = false;
+
+const triggerDeepResearch = async () => {
+	if (!deepResearchInput.trim()) {
+		toast.error($i18n.t('Enter a query to start deep research'));
+		return;
+	}
+
+	deepResearchLoading = true;
+	try {
+		const run = await startDeepResearch(localStorage.token, {
+			inputs: {
+				query: deepResearchInput
+			}
+		});
+
+		deepResearch.update((state) => ({
+			...state,
+			showPanel: true,
+			runId: run.run_id,
+			isStreaming: true,
+			log: ''
+		}));
+		deepResearchInput = '';
+	} catch (error) {
+		console.error(error);
+		toast.error($i18n.t('Failed to start deep research'));
+	} finally {
+		deepResearchLoading = false;
+	}
+};
 
 	let autoScroll = true;
 	let processing = '';
@@ -401,6 +437,8 @@
 		window.addEventListener('message', onMessageHandler);
 		$socket?.on('chat-events', chatEventHandler);
 
+		token = localStorage.token;
+
 		if (!$chatId) {
 			chatIdUnsubscriber = chatId.subscribe(async (value) => {
 				if (!value) {
@@ -462,6 +500,11 @@
 		window.removeEventListener('message', onMessageHandler);
 		$socket?.off('chat-events', chatEventHandler);
 	});
+
+	$: deepResearch.update((state) => ({
+		...state,
+		enabled: $config?.features?.enable_deep_research ?? false
+	}));
 
 	// File upload functions
 
@@ -2067,6 +2110,35 @@
 								}}
 							/>
 
+					{#if $deepResearch.enabled && $deepResearch.showPanel}
+						<div class="mt-3 px-2.5">
+							<div class="flex items-center gap-2">
+								<input
+									class="flex-1 rounded-xl border border-gray-200 dark:border-gray-800 bg-transparent px-3 py-2 text-sm"
+									bind:value={deepResearchInput}
+									placeholder={$i18n.t('Ask for a deep research investigation...')}
+									on:keydown={(event) => {
+										if (event.key === 'Enter' && !event.shiftKey) {
+											event.preventDefault();
+											triggerDeepResearch();
+										}
+									}}
+								/>
+								<button
+									class="px-3 py-2 text-sm rounded-xl bg-blue-500 text-white disabled:opacity-70"
+									on:click={triggerDeepResearch}
+									disabled={deepResearchLoading}
+								>
+									{#if deepResearchLoading}
+										<Spinner className="size-4" />
+									{:else}
+										{$i18n.t('Start')}
+									{/if}
+								</button>
+							</div>
+						</div>
+					{/if}
+
 							<div
 								class="absolute bottom-1 text-xs text-gray-500 text-center line-clamp-1 right-0 left-0"
 							>
@@ -2114,6 +2186,12 @@
 					{/if}
 				</div>
 			</Pane>
+
+			{#if $deepResearch.enabled && $deepResearch.showPanel}
+				<Pane defaultSize={30} class="border-l border-gray-100 dark:border-gray-800">
+					<DeepResearchPanel {token} />
+				</Pane>
+			{/if}
 
 			<ChatControls
 				bind:this={controlPaneComponent}

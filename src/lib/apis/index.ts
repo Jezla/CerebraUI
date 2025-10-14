@@ -1,6 +1,7 @@
 import { WEBUI_API_BASE_URL, WEBUI_BASE_URL } from '$lib/constants';
 import { convertOpenApiToToolPayload } from '$lib/utils';
 import { getOpenAIModelsDirect } from './openai';
+export * from './deepResearch';
 
 import { parse } from 'yaml';
 import { toast } from 'svelte-sonner';

@@ -17,8 +17,9 @@
 		showCallOverlay,
 		tools,
 		user as _user,
-		showControls,
-		TTSWorker
+	showControls,
+	TTSWorker,
+	deepResearch
 	} from '$lib/stores';
 
 	import {
@@ -49,7 +50,8 @@
 	import GlobeAlt from '../icons/GlobeAlt.svelte';
 	import PhotoSolid from '../icons/PhotoSolid.svelte';
 	import Photo from '../icons/Photo.svelte';
-	import CommandLine from '../icons/CommandLine.svelte';
+import CommandLine from '../icons/CommandLine.svelte';
+import Research from '../icons/Research.svelte';
 	import { KokoroWorker } from '$lib/workers/KokoroWorker';
 	import ToolServersModal from './ToolServersModal.svelte';
 	import Wrench from '../icons/Wrench.svelte';
@@ -1184,6 +1186,28 @@
 														</button>
 													</Tooltip>
 												{/if}
+
+						{#if $config?.features?.enable_deep_research}
+							<Tooltip content={$i18n.t('Open the deep research panel')} placement="top">
+								<button
+									on:click|preventDefault={() =>
+										deepResearch.update((state) => ({
+											...state,
+											showPanel: !state.showPanel
+										}))}
+									type="button"
+									class="px-1.5 @xl:px-2.5 py-1.5 flex gap-1.5 items-center text-sm rounded-full font-medium transition-colors duration-300 focus:outline-hidden max-w-full overflow-hidden border {$deepResearch.showPanel
+										? 'bg-blue-100 dark:bg-blue-500/20 border-blue-400/20 text-blue-500 dark:text-blue-400'
+										: 'bg-transparent border-transparent text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'}"
+									>
+										<Research className="size-5" strokeWidth="1.75" />
+										<span
+											class="hidden @xl:block whitespace-nowrap overflow-hidden text-ellipsis translate-y-[0.5px]"
+										>{$i18n.t('Deep Research')}</span
+										>
+									</button>
+								</Tooltip>
+						{/if}
 											{/if}
 										</div>
 									</div>

@@ -77,6 +77,7 @@ from cerebraui.routers import (
     tools,
     users,
     utils,
+    deep_research,
 )
 
 from cerebraui.routers.retrieval import (
@@ -147,6 +148,10 @@ from cerebraui.config import (
     IMAGES_OPENAI_API_KEY,
     IMAGES_GEMINI_API_BASE_URL,
     IMAGES_GEMINI_API_KEY,
+    ENABLE_DEEP_RESEARCH,
+    DEEP_RESEARCH_BASE_URL,
+    DEEP_RESEARCH_API_KEY,
+    DEEP_RESEARCH_WORKFLOW_ID,
     # Audio
     AUDIO_STT_ENGINE,
     AUDIO_STT_MODEL,
@@ -661,6 +666,10 @@ app.state.config.BYPASS_WEB_SEARCH_EMBEDDING_AND_RETRIEVAL = (
 
 app.state.config.ENABLE_GOOGLE_DRIVE_INTEGRATION = ENABLE_GOOGLE_DRIVE_INTEGRATION
 app.state.config.ENABLE_ONEDRIVE_INTEGRATION = ENABLE_ONEDRIVE_INTEGRATION
+app.state.config.ENABLE_DEEP_RESEARCH = ENABLE_DEEP_RESEARCH
+app.state.config.DEEP_RESEARCH_BASE_URL = DEEP_RESEARCH_BASE_URL
+app.state.config.DEEP_RESEARCH_API_KEY = DEEP_RESEARCH_API_KEY
+app.state.config.DEEP_RESEARCH_WORKFLOW_ID = DEEP_RESEARCH_WORKFLOW_ID
 app.state.config.SEARXNG_QUERY_URL = SEARXNG_QUERY_URL
 app.state.config.GOOGLE_PSE_API_KEY = GOOGLE_PSE_API_KEY
 app.state.config.GOOGLE_PSE_ENGINE_ID = GOOGLE_PSE_ENGINE_ID
@@ -971,6 +980,9 @@ app.include_router(configs.router, prefix="/api/v1/configs", tags=["configs"])
 
 app.include_router(auths.router, prefix="/api/v1/auths", tags=["auths"])
 app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
+app.include_router(
+    deep_research.router, prefix="/api/v1/deep-research", tags=["deep_research"]
+)
 
 
 app.include_router(channels.router, prefix="/api/v1/channels", tags=["channels"])
@@ -1307,6 +1319,7 @@ async def get_app_config(request: Request):
                     "enable_code_execution": app.state.config.ENABLE_CODE_EXECUTION,
                     "enable_code_interpreter": app.state.config.ENABLE_CODE_INTERPRETER,
                     "enable_image_generation": app.state.config.ENABLE_IMAGE_GENERATION,
+                    "enable_deep_research": app.state.config.ENABLE_DEEP_RESEARCH,
                     "enable_autocomplete_generation": app.state.config.ENABLE_AUTOCOMPLETE_GENERATION,
                     "enable_community_sharing": app.state.config.ENABLE_COMMUNITY_SHARING,
                     "enable_message_rating": app.state.config.ENABLE_MESSAGE_RATING,
