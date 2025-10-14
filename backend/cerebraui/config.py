@@ -2499,6 +2499,19 @@ COMFYUI_WORKFLOW_NODES = PersistentConfig(
     [],
 )
 
+# Image-to-Image workflow configuration
+COMFYUI_WORKFLOW_IMG2IMG = PersistentConfig(
+    "COMFYUI_WORKFLOW_IMG2IMG",
+    "image_generation.comfyui.workflow_img2img",
+    os.getenv("COMFYUI_WORKFLOW_IMG2IMG", ""),
+)
+
+COMFYUI_WORKFLOW_IMG2IMG_NODES = PersistentConfig(
+    "COMFYUI_WORKFLOW_IMG2IMG",
+    "image_generation.comfyui.nodes_img2img",
+    [],
+)
+
 IMAGES_OPENAI_API_BASE_URL = PersistentConfig(
     "IMAGES_OPENAI_API_BASE_URL",
     "image_generation.openai.api_base_url",

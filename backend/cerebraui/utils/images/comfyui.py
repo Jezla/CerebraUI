@@ -1,11 +1,14 @@
 import asyncio
+import base64
 import json
 import logging
 import random
 import urllib.parse
 import urllib.request
+from io import BytesIO
 from typing import Optional
 
+import aiohttp
 import websocket  # NOTE: websocket-client (https://github.com/websocket-client/websocket-client)
 from cerebraui.env import SRC_LOG_LEVELS
 from pydantic import BaseModel
@@ -115,12 +118,77 @@ class ComfyUIGenerateImageForm(BaseModel):
     steps: Optional[int] = None
     seed: Optional[int] = None
 
+    # Image-to-image fields
+    image: Optional[str] = None  # base64 or URL or file path
+    strength: Optional[float] = None
+
+
+async def upload_image_to_comfyui(image_data: str, base_url: str, api_key: str):
+    """Upload image to ComfyUI server and return the filename"""
+    log.info("upload_image_to_comfyui")
+
+    # Parse image data
+    img_bytes = None
+    if image_data.startswith("data:image"):
+        # base64 format: data:image/png;base64,iVBORw0KGg...
+        header, encoded = image_data.split(",", 1)
+        img_bytes = base64.b64decode(encoded)
+    elif image_data.startswith("http://") or image_data.startswith("https://"):
+        # URL format - download the image
+        headers = {}
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+
+        async with aiohttp.ClientSession() as session:
+            async with session.get(image_data, headers=headers) as resp:
+                if resp.status == 200:
+                    img_bytes = await resp.read()
+                else:
+                    raise Exception(f"Failed to download image from URL: {resp.status}")
+    else:
+        # Assume it's already a filename or file path
+        # In this case, we might need to read from the local file system
+        # For now, we'll treat it as base64 without header
+        try:
+            img_bytes = base64.b64decode(image_data)
+        except Exception as e:
+            raise Exception(f"Unsupported image format or invalid data: {e}")
+
+    if not img_bytes:
+        raise Exception("Failed to process image data")
+
+    # Upload to ComfyUI
+    form = aiohttp.FormData()
+    form.add_field('image', BytesIO(img_bytes), filename='input_image.png', content_type='image/png')
+
+    headers = {**default_headers}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+
+    async with aiohttp.ClientSession() as session:
+        async with session.post(f"{base_url}/upload/image", data=form, headers=headers) as resp:
+            if resp.status == 200:
+                result = await resp.json()
+                log.info(f"Image uploaded successfully: {result}")
+                return result["name"]  # Return the uploaded filename
+            else:
+                error_text = await resp.text()
+                raise Exception(f"Failed to upload image to ComfyUI: {resp.status} - {error_text}")
+
 
 async def comfyui_generate_image(
     model: str, payload: ComfyUIGenerateImageForm, client_id, base_url, api_key
 ):
     ws_url = base_url.replace("http://", "ws://").replace("https://", "wss://")
     workflow = json.loads(payload.workflow.workflow)
+
+    # If image is provided, upload it to ComfyUI first
+    uploaded_image_name = None
+    if payload.image:
+        uploaded_image_name = await upload_image_to_comfyui(
+            payload.image, base_url, api_key
+        )
+        log.info(f"Uploaded image: {uploaded_image_name}")
 
     for node in payload.workflow.nodes:
         if node.type:
@@ -165,6 +233,20 @@ async def comfyui_generate_image(
                 )
                 for node_id in node.node_ids:
                     workflow[node_id]["inputs"][node.key] = seed
+            elif node.type == "image":
+                # For image-to-image: set the uploaded image filename
+                if uploaded_image_name:
+                    for node_id in node.node_ids:
+                        workflow[node_id]["inputs"][
+                            node.key if node.key else "image"
+                        ] = uploaded_image_name
+            elif node.type == "strength":
+                # For image-to-image: set the strength parameter
+                if payload.strength is not None:
+                    for node_id in node.node_ids:
+                        workflow[node_id]["inputs"][
+                            node.key if node.key else "strength"
+                        ] = payload.strength
         else:
             for node_id in node.node_ids:
                 workflow[node_id]["inputs"][node.key] = node.value

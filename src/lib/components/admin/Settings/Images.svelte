@@ -97,6 +97,49 @@
 		}
 	];
 
+	let requiredWorkflowImg2ImgNodes = [
+		{
+			type: 'prompt',
+			key: 'text',
+			node_ids: ''
+		},
+		{
+			type: 'model',
+			key: 'ckpt_name',
+			node_ids: ''
+		},
+		{
+			type: 'width',
+			key: 'width',
+			node_ids: ''
+		},
+		{
+			type: 'height',
+			key: 'height',
+			node_ids: ''
+		},
+		{
+			type: 'steps',
+			key: 'steps',
+			node_ids: ''
+		},
+		{
+			type: 'seed',
+			key: 'seed',
+			node_ids: ''
+		},
+		{
+			type: 'image',
+			key: 'image',
+			node_ids: ''
+		},
+		{
+			type: 'strength',
+			key: 'strength',
+			node_ids: ''
+		}
+	];
+
 	const getModels = async () => {
 		models = await getImageGenerationModels(localStorage.token).catch((error) => {
 			toast.error(`${error}`);
@@ -147,6 +190,14 @@
 			}
 		}
 
+		if (config?.comfyui?.COMFYUI_WORKFLOW_IMG2IMG && config.comfyui.COMFYUI_WORKFLOW_IMG2IMG.trim() !== '') {
+			if (!validateJSON(config.comfyui.COMFYUI_WORKFLOW_IMG2IMG)) {
+				toast.error('Invalid JSON format for ComfyUI Image-to-Image Workflow.');
+				loading = false;
+				return;
+			}
+		}
+
 		if (config?.comfyui?.COMFYUI_WORKFLOW) {
 			config.comfyui.COMFYUI_WORKFLOW_NODES = requiredWorkflowNodes.map((node) => {
 				return {
@@ -156,6 +207,19 @@
 						node.node_ids.trim() === '' ? [] : node.node_ids.split(',').map((id) => id.trim())
 				};
 			});
+		}
+
+		if (config?.comfyui?.COMFYUI_WORKFLOW_IMG2IMG && config.comfyui.COMFYUI_WORKFLOW_IMG2IMG.trim() !== '') {
+			config.comfyui.COMFYUI_WORKFLOW_IMG2IMG_NODES = requiredWorkflowImg2ImgNodes.map((node) => {
+				return {
+					type: node.type,
+					key: node.key,
+					node_ids:
+						node.node_ids.trim() === '' ? [] : node.node_ids.split(',').map((id) => id.trim())
+				};
+			});
+		} else {
+			config.comfyui.COMFYUI_WORKFLOW_IMG2IMG_NODES = [];
 		}
 
 		await updateConfig(localStorage.token, config).catch((error) => {
@@ -202,6 +266,18 @@
 				}
 			}
 
+			if (config.comfyui.COMFYUI_WORKFLOW_IMG2IMG) {
+				try {
+					config.comfyui.COMFYUI_WORKFLOW_IMG2IMG = JSON.stringify(
+						JSON.parse(config.comfyui.COMFYUI_WORKFLOW_IMG2IMG),
+						null,
+						2
+					);
+				} catch (e) {
+					console.log(e);
+				}
+			}
+
 			requiredWorkflowNodes = requiredWorkflowNodes.map((node) => {
 				const n = config.comfyui.COMFYUI_WORKFLOW_NODES.find((n) => n.type === node.type) ?? node;
 
@@ -213,6 +289,18 @@
 					node_ids: typeof n.node_ids === 'string' ? n.node_ids : n.node_ids.join(',')
 				};
 			});
+
+			if (config.comfyui.COMFYUI_WORKFLOW_IMG2IMG_NODES && config.comfyui.COMFYUI_WORKFLOW_IMG2IMG_NODES.length > 0) {
+				requiredWorkflowImg2ImgNodes = requiredWorkflowImg2ImgNodes.map((node) => {
+					const n = config.comfyui.COMFYUI_WORKFLOW_IMG2IMG_NODES.find((n) => n.type === node.type) ?? node;
+
+					return {
+						type: n.type,
+						key: n.key,
+						node_ids: typeof n.node_ids === 'string' ? n.node_ids : n.node_ids.join(',')
+					};
+				});
+			}
 
 			const imageConfigRes = await getImageGenerationConfig(localStorage.token).catch((error) => {
 				toast.error(`${error}`);
@@ -592,6 +680,102 @@
 
 							<div class="mt-2 text-xs text-right text-gray-400 dark:text-gray-500">
 								{$i18n.t('*Prompt node ID(s) are required for image generation')}
+							</div>
+						</div>
+					{/if}
+
+					<!-- Image-to-Image Workflow Section -->
+					<div class="mt-4">
+						<div class=" mb-2 text-sm font-medium">{$i18n.t('ComfyUI Image-to-Image Workflow')} <span class="text-xs text-gray-500">(Optional)</span></div>
+
+						{#if config.comfyui.COMFYUI_WORKFLOW_IMG2IMG}
+							<textarea
+								class="w-full rounded-lg mb-1 py-2 px-4 text-xs bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-hidden disabled:text-gray-600 resize-none"
+								rows="10"
+								bind:value={config.comfyui.COMFYUI_WORKFLOW_IMG2IMG}
+							/>
+						{/if}
+
+						<div class="flex w-full">
+							<div class="flex-1">
+								<input
+									id="upload-comfyui-workflow-img2img-input"
+									hidden
+									type="file"
+									accept=".json"
+									on:change={(e) => {
+										const file = e.target.files[0];
+										const reader = new FileReader();
+
+										reader.onload = (e) => {
+											config.comfyui.COMFYUI_WORKFLOW_IMG2IMG = e.target.result;
+											e.target.value = null;
+										};
+
+										reader.readAsText(file);
+									}}
+								/>
+
+								<button
+									class="w-full text-sm font-medium py-2 bg-transparent hover:bg-gray-100 border border-dashed dark:border-gray-850 dark:hover:bg-gray-850 text-center rounded-xl"
+									type="button"
+									on:click={() => {
+										document.getElementById('upload-comfyui-workflow-img2img-input')?.click();
+									}}
+								>
+									{$i18n.t('Click here to upload image-to-image workflow.json file.')}
+								</button>
+							</div>
+						</div>
+
+						<div class="mt-2 text-xs text-gray-400 dark:text-gray-500">
+							{$i18n.t('Upload an image-to-image workflow for img2img generation. This workflow should include LoadImage and image processing nodes.')}
+						</div>
+					</div>
+
+					{#if config.comfyui.COMFYUI_WORKFLOW_IMG2IMG && config.comfyui.COMFYUI_WORKFLOW_IMG2IMG.trim() !== ''}
+						<div class="">
+							<div class=" mb-2 text-sm font-medium">{$i18n.t('Image-to-Image Workflow Nodes')}</div>
+
+							<div class="text-xs flex flex-col gap-1.5">
+								{#each requiredWorkflowImg2ImgNodes as node}
+									<div class="flex w-full items-center border dark:border-gray-850 rounded-lg">
+										<div class="shrink-0">
+											<div
+												class=" capitalize line-clamp-1 font-medium px-3 py-1 w-20 text-center rounded-l-lg {node.type === 'image' || node.type === 'strength' ? 'bg-blue-500/10 text-blue-700 dark:text-blue-200' : 'bg-green-500/10 text-green-700 dark:text-green-200'}"
+											>
+												{node.type}{node.type === 'prompt' || node.type === 'image' ? '*' : ''}
+											</div>
+										</div>
+										<div class="">
+											<Tooltip content="Input Key (e.g. image, strength, text)">
+												<input
+													class="py-1 px-3 w-24 text-xs text-center bg-transparent outline-hidden border-r dark:border-gray-850"
+													placeholder="Key"
+													bind:value={node.key}
+													required={node.type === 'image' || node.type === 'prompt'}
+												/>
+											</Tooltip>
+										</div>
+
+										<div class="w-full">
+											<Tooltip
+												content="Comma separated Node Ids (e.g. 5 for LoadImage, 2 for ImageToImage)"
+												placement="top-start"
+											>
+												<input
+													class="w-full py-1 px-4 rounded-r-lg text-xs bg-transparent outline-hidden"
+													placeholder="Node Ids"
+													bind:value={node.node_ids}
+												/>
+											</Tooltip>
+										</div>
+									</div>
+								{/each}
+							</div>
+
+							<div class="mt-2 text-xs text-right text-gray-400 dark:text-gray-500">
+								{$i18n.t('*image and prompt node IDs are required for image-to-image generation')}
 							</div>
 						</div>
 					{/if}

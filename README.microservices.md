@@ -291,6 +291,8 @@ api_key = fal_your_actual_api_key_here
 
 #### Step 5: Configure Workflow Node Mapping
 
+> See `COMFYUI_IMG2IMG_SETUP.md` for detailed instructions.
+
 Based on your Fal API Flux workflow, configure the node mapping as follows:
 
 ##### ComfyUI Workflow Nodes Configuration:

@@ -590,6 +590,60 @@ async def verify_connection(
 
 
 @router.post("/chat/completions")
+def filter_vision_content_for_non_vision_models(payload: dict, model_id: str) -> dict:
+    """
+    Filter out image_url content from messages if the model doesn't support vision.
+    This prevents 400 errors when using non-vision models with image content.
+    """
+    # List of models that support vision
+    vision_supported_models = [
+        "gpt-4-vision",
+        "gpt-4o",
+        "gpt-4-turbo",
+        "claude-3",
+        "gemini-1.5-pro-vision",
+        "gemini-pro-vision",
+    ]
+
+    # Check if model supports vision
+    model_lower = model_id.lower()
+    supports_vision = any(vm in model_lower for vm in vision_supported_models)
+
+    if supports_vision:
+        # Model supports vision, no filtering needed
+        return payload
+
+    # Filter out image_url from messages
+    if "messages" in payload:
+        filtered_messages = []
+        for message in payload["messages"]:
+            if isinstance(message.get("content"), list):
+                # Filter out image_url content
+                filtered_content = []
+                for content_item in message["content"]:
+                    if isinstance(content_item, dict):
+                        if content_item.get("type") != "image_url":
+                            filtered_content.append(content_item)
+
+                # If we have remaining content, keep the message
+                if filtered_content:
+                    filtered_message = {**message, "content": filtered_content}
+                    # If only one text item remains, simplify to string
+                    if len(filtered_content) == 1 and filtered_content[0].get("type") == "text":
+                        filtered_message["content"] = filtered_content[0].get("text", "")
+                    filtered_messages.append(filtered_message)
+                elif isinstance(message.get("content"), str):
+                    # Fallback to string content if available
+                    filtered_messages.append(message)
+            else:
+                # Keep messages with string content as-is
+                filtered_messages.append(message)
+
+        payload["messages"] = filtered_messages
+
+    return payload
+
+
 async def generate_chat_completion(
     request: Request,
     form_data: dict,
@@ -688,6 +742,9 @@ async def generate_chat_completion(
         payload["logit_bias"] = json.loads(
             convert_logit_bias_input_to_json(payload["logit_bias"])
         )
+
+    # Filter vision content for non-vision models to prevent 400 errors
+    payload = filter_vision_content_for_non_vision_models(payload, model_id)
 
     payload = json.dumps(payload)
 

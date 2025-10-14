@@ -54,6 +54,8 @@ async def get_config(request: Request, user=Depends(get_admin_user)):
             "COMFYUI_API_KEY": request.app.state.config.COMFYUI_API_KEY,
             "COMFYUI_WORKFLOW": request.app.state.config.COMFYUI_WORKFLOW,
             "COMFYUI_WORKFLOW_NODES": request.app.state.config.COMFYUI_WORKFLOW_NODES,
+            "COMFYUI_WORKFLOW_IMG2IMG": request.app.state.config.COMFYUI_WORKFLOW_IMG2IMG,
+            "COMFYUI_WORKFLOW_IMG2IMG_NODES": request.app.state.config.COMFYUI_WORKFLOW_IMG2IMG_NODES,
         },
         "gemini": {
             "GEMINI_API_BASE_URL": request.app.state.config.IMAGES_GEMINI_API_BASE_URL,
@@ -80,6 +82,8 @@ class ComfyUIConfigForm(BaseModel):
     COMFYUI_API_KEY: str
     COMFYUI_WORKFLOW: str
     COMFYUI_WORKFLOW_NODES: list[dict]
+    COMFYUI_WORKFLOW_IMG2IMG: str
+    COMFYUI_WORKFLOW_IMG2IMG_NODES: list[dict]
 
 
 class GeminiConfigForm(BaseModel):
@@ -150,6 +154,10 @@ async def update_config(
     request.app.state.config.COMFYUI_WORKFLOW_NODES = (
         form_data.comfyui.COMFYUI_WORKFLOW_NODES
     )
+    request.app.state.config.COMFYUI_WORKFLOW_IMG2IMG = form_data.comfyui.COMFYUI_WORKFLOW_IMG2IMG
+    request.app.state.config.COMFYUI_WORKFLOW_IMG2IMG_NODES = (
+        form_data.comfyui.COMFYUI_WORKFLOW_IMG2IMG_NODES
+    )
 
     return {
         "enabled": request.app.state.config.ENABLE_IMAGE_GENERATION,
@@ -171,6 +179,8 @@ async def update_config(
             "COMFYUI_API_KEY": request.app.state.config.COMFYUI_API_KEY,
             "COMFYUI_WORKFLOW": request.app.state.config.COMFYUI_WORKFLOW,
             "COMFYUI_WORKFLOW_NODES": request.app.state.config.COMFYUI_WORKFLOW_NODES,
+            "COMFYUI_WORKFLOW_IMG2IMG": request.app.state.config.COMFYUI_WORKFLOW_IMG2IMG,
+            "COMFYUI_WORKFLOW_IMG2IMG_NODES": request.app.state.config.COMFYUI_WORKFLOW_IMG2IMG_NODES,
         },
         "gemini": {
             "GEMINI_API_BASE_URL": request.app.state.config.IMAGES_GEMINI_API_BASE_URL,
@@ -414,6 +424,10 @@ class GenerateImageForm(BaseModel):
     n: int = 1
     negative_prompt: Optional[str] = None
 
+    # Image-to-image fields
+    image: Optional[str] = None  # base64, URL, or file path
+    strength: Optional[float] = 0.8  # default strength for image-to-image
+
 
 def load_b64_image_data(b64_str):
     try:
@@ -575,12 +589,37 @@ async def image_generations(
             if form_data.negative_prompt is not None:
                 data["negative_prompt"] = form_data.negative_prompt
 
+            # Add image-to-image fields if provided
+            if form_data.image:
+                data["image"] = form_data.image
+
+            if form_data.strength is not None:
+                data["strength"] = form_data.strength
+
+            # Select workflow based on whether image is provided
+            # If image is provided and img2img workflow exists, use img2img workflow
+            # Otherwise use default text-to-image workflow
+            use_img2img = (
+                form_data.image
+                and request.app.state.config.COMFYUI_WORKFLOW_IMG2IMG
+                and request.app.state.config.COMFYUI_WORKFLOW_IMG2IMG.strip() != ""
+            )
+
+            if use_img2img:
+                workflow_json = request.app.state.config.COMFYUI_WORKFLOW_IMG2IMG
+                workflow_nodes = request.app.state.config.COMFYUI_WORKFLOW_IMG2IMG_NODES
+                log.info("Using image-to-image workflow")
+            else:
+                workflow_json = request.app.state.config.COMFYUI_WORKFLOW
+                workflow_nodes = request.app.state.config.COMFYUI_WORKFLOW_NODES
+                log.info("Using text-to-image workflow")
+
             form_data = ComfyUIGenerateImageForm(
                 **{
                     "workflow": ComfyUIWorkflow(
                         **{
-                            "workflow": request.app.state.config.COMFYUI_WORKFLOW,
-                            "nodes": request.app.state.config.COMFYUI_WORKFLOW_NODES,
+                            "workflow": workflow_json,
+                            "nodes": workflow_nodes,
                         }
                     ),
                     **data,
