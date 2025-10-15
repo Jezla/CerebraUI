@@ -54,8 +54,8 @@ import { Research } from '$lib/components/icons';
 			class=" bg-linear-to-b via-50% from-white via-white to-transparent dark:from-gray-900 dark:via-gray-900 dark:to-transparent pointer-events-none absolute inset-0 -bottom-7 z-[-1]"
 		></div>
 
-		<div class=" flex max-w-full w-full mx-auto px-1 pt-0.5 bg-transparent">
-			<div class="flex items-center w-full max-w-full">
+		<div class="flex w-full mx-auto px-1 pt-0.5 bg-transparent">
+			<div class="flex items-center w-full gap-1">
 				<div
 					class="{$showSidebar
 						? 'md:hidden'
@@ -76,7 +76,7 @@ import { Research } from '$lib/components/icons';
 				</div>
 
 				<div
-					class="flex-1 overflow-hidden max-w-full py-0.5
+					class="flex-1 overflow-hidden py-0.5 min-w-0
 			{$showSidebar ? 'ml-1' : ''}
 			"
 				>
@@ -85,7 +85,9 @@ import { Research } from '$lib/components/icons';
 					{/if}
 				</div>
 
-                <div class="self-start flex flex-none items-center text-gray-600 dark:text-gray-400 gap-1">
+  			<div
+					class="self-start flex flex-none items-center text-gray-600 dark:text-gray-400 gap-1 flex-shrink-0"
+				>
 					<!-- <div class="md:hidden flex self-center w-[1px] h-5 mx-2 bg-gray-300 dark:bg-stone-700" /> -->
 					{#if shareEnabled && chat && (chat.id || $temporaryChatEnabled)}
 						<Menu
