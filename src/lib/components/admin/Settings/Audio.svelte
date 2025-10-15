@@ -250,7 +250,7 @@
 						<div class="mt-2 mb-1 text-xs text-gray-400 dark:text-gray-500">
 							{$i18n.t('Leave model field empty to use the default model.')}
 							<a
-								class=" hover:underline dark:text-gray-200 text-gray-800"
+								class=" hover:underline dark:text-gray-200 text-gray-800 break-words"
 								href="https://developers.deepgram.com/docs/models"
 								target="_blank"
 							>
@@ -361,7 +361,7 @@
 							{$i18n.t(`CerebraUI uses faster-whisper internally.`)}
 
 							<a
-								class=" hover:underline dark:text-gray-200 text-gray-800"
+								class=" hover:underline dark:text-gray-200 text-gray-800 break-words"
 								href="https://github.com/SYSTRAN/faster-whisper"
 								target="_blank"
 							>
@@ -498,7 +498,7 @@
 							To learn more about SpeechT5,
 
 							<a
-								class=" hover:underline dark:text-gray-200 text-gray-800"
+								class=" hover:underline dark:text-gray-200 text-gray-800 break-words"
 								href="https://github.com/microsoft/SpeechT5"
 								target="_blank"
 							>
@@ -508,7 +508,7 @@
 							</a>
 							To see the available CMU Arctic speaker embeddings,
 							<a
-								class=" hover:underline dark:text-gray-200 text-gray-800"
+								class=" hover:underline dark:text-gray-200 text-gray-800 break-words"
 								href="https://huggingface.co/datasets/Matthijs/cmu-arctic-xvectors"
 								target="_blank"
 							>
@@ -623,6 +623,7 @@
 							<div class=" mb-1.5 text-sm font-medium">
 								{$i18n.t('Output format')}
 								<a
+									class="hover:underline dark:text-gray-200 text-gray-800 break-words"
 									href="https://learn.microsoft.com/en-us/azure/ai-services/speech-service/rest-text-to-speech?tabs=streaming#audio-outputs"
 									target="_blank"
 								>
