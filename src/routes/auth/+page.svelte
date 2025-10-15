@@ -26,8 +26,20 @@
 
 	const i18n = getContext('i18n');
 	let turnstileToken = '';
+	let turnstileWidgetId = null;
 	window.onSuccess = (t) => {
 		turnstileToken = t;
+	};
+	window.onExpired = () => {
+		turnstileToken = '';
+		toast.error('Turnstile expired');
+	};
+	window.onError = () => {
+		turnstileToken = '';
+		toast.error('Turnstile error');
+	};
+	window.onTurnstileReady = () => {
+		console.log('Turnstile is ready');
 	};
 	let loaded = false;
 
@@ -38,6 +50,30 @@
 	let password = '';
 
 	let ldapUsername = '';
+
+	const resetTurnstile = () => {
+		if (window.turnstile) {
+			const turnstileElement = document.getElementById('turnstile-widget');
+			if (turnstileElement) {
+				try {
+					window.turnstile.reset(turnstileElement);
+					turnstileToken = '';
+					console.log('Turnstile reset successfully');
+				} catch (error) {
+					console.error('Error resetting Turnstile:', error);
+					window.turnstile.render(turnstileElement, {
+						sitekey: '0x4AAAAAAB2bBXszSarbTbkj',
+						theme: 'auto',
+						size: 'normal',
+						callback: 'onSuccess',
+						'expired-callback': 'onExpired',
+						'error-callback': 'onError'
+					});
+					turnstileToken = '';
+				}
+			}
+		}
+	};
 
 	const querystringValue = (key) => {
 		const querystring = window.location.search;
@@ -66,16 +102,20 @@
 		const res = await verifyCFToken(turnstileToken);
 		if (res.success !== true) {
 			toast.error('Verification failed');
+			resetTurnstile();
 			return;
 		}
 		toast.success('CF Verification successful');
 		const sessionUser = await userSignIn(email, password).catch((error) => {
 			toast.error(`${error}`);
+			resetTurnstile();
 			return null;
 		});
-		if (sessionUser.needs_verification || !sessionUser.is_email_verified) {
+		if (sessionUser) {
+			if (sessionUser.needs_verification || !sessionUser.is_email_verified) {
 			const res = await sendEmail(sessionUser.email, 'signin').catch((error) => {
 				toast.error(`${error.detail}`);
+				resetTurnstile();
 				return null;
 			});
 			localStorage.token = sessionUser.token;
@@ -83,26 +123,30 @@
 			sessionStorage.setItem('email', sessionUser.email);
 			await goto('/verify');
 			return;
+			}
+			await setSessionUser(sessionUser);
 		}
-		await setSessionUser(sessionUser);
 	};
 
 	const signUpHandler = async () => {
 		const res = await verifyCFToken(turnstileToken);
 		if (res.success !== true) {
 			toast.error('Verification failed');
+			resetTurnstile();
 			return;
 		}
 		toast.success('CF Verification successful');
 		const sessionUser = await userSignUp(name, email, password, generateInitialsImage(name)).catch(
 			(error) => {
 				toast.error(`${error}`);
+				resetTurnstile();
 				return;
 			}
 		);
 		if (sessionUser) {
 			const verifyRes = await sendEmail(sessionUser.email, 'signup').catch((error) => {
 				toast.error(`${error.detail}`);
+				resetTurnstile();
 				return;
 			});
 			localStorage.token = sessionUser.token;
@@ -116,11 +160,13 @@
 		const res = await verifyCFToken(turnstileToken);
 		if (res.success !== true) {
 			toast.error('Verification failed');
+			resetTurnstile();
 			return;
 		}
 		toast.success('CF Verification successful');
 		const sessionUser = await ldapUserSignIn(ldapUsername, password).catch((error) => {
 			toast.error(`${error}`);
+			resetTurnstile();
 			return null;
 		});
 		await setSessionUser(sessionUser);
@@ -130,6 +176,7 @@
 		const res = await verifyCFToken(turnstileToken);
 		if (res.success !== true) {
 			toast.error('Verification failed');
+			resetTurnstile();
 			return;
 		}
 		toast.success('CF Verification successful');
@@ -149,6 +196,7 @@
 		} catch (error) {
 			console.log(error);
 			toast.error(`${error.detail}`);
+			resetTurnstile();
 		}
 	};
 
@@ -236,7 +284,12 @@
 	<title>
 		{`${$WEBUI_NAME}`}
 	</title>
-	<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+	<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" 
+	async 
+	defer 
+	on:load={() => {
+		window.onTurnstileReady && window.onTurnstileReady();
+	}}></script>
 </svelte:head>
 
 <OnBoarding
@@ -289,8 +342,7 @@
 					<div class="  my-auto pb-10 w-full dark:text-gray-100">
 						<form
 							class=" flex flex-col justify-center"
-							method="post"
-							on:submit|once={(e) => {
+							on:submit={(e) => {
 								e.preventDefault();
 								submitHandler();
 							}}
@@ -406,11 +458,14 @@
 									{:else}
 										<!-- Main button -->
 										<div
+											id="turnstile-widget"
 											class="cf-turnstile"
 											data-sitekey="0x4AAAAAAB2bBXszSarbTbkj"
 											data-theme="auto"
 											data-size="normal"
 											data-callback="onSuccess"
+											data-expired-callback="onExpired"
+											data-error-callback="onError"
 										></div>
 										<button
 											class="bg-gray-700/5 hover:bg-gray-700/10 dark:bg-gray-100/5 dark:hover:bg-gray-100/10 dark:text-gray-300 dark:hover:text-white transition w-full rounded-full font-medium text-sm py-2.5"
