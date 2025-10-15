@@ -359,6 +359,7 @@ async def ldap_auth(request: Request, response: Response, form_data: LdapForm):
 async def signin(request: Request, response: Response, form_data: SigninForm):
     if WEBUI_AUTH_TRUSTED_EMAIL_HEADER:
         if WEBUI_AUTH_TRUSTED_EMAIL_HEADER not in request.headers:
+            print("INVALID_TRUSTED_HEADER")
             raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_TRUSTED_HEADER)
 
         trusted_email = request.headers[WEBUI_AUTH_TRUSTED_EMAIL_HEADER].lower()
@@ -384,6 +385,7 @@ async def signin(request: Request, response: Response, form_data: SigninForm):
             user = Auths.authenticate_user(admin_email.lower(), admin_password)
         else:
             if Users.get_num_users() != 0:
+                print("EXISTING_USERS")
                 raise HTTPException(400, detail=ERROR_MESSAGES.EXISTING_USERS)
 
             await signup(
@@ -452,6 +454,7 @@ async def signin(request: Request, response: Response, form_data: SigninForm):
             "is_email_verified": user.is_email_verified,
         }
     else:
+        print("INVALID_CRED")
         raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_CRED)
 
 
