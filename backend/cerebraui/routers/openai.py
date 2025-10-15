@@ -591,28 +591,88 @@ async def verify_connection(
 
 @router.post("/chat/completions")
 def filter_vision_content_for_non_vision_models(payload: dict, model_id: str) -> dict:
-    """
-    Filter out image_url content from messages if the model doesn't support vision.
-    This prevents 400 errors when using non-vision models with image content.
-    """
-    # List of models that support vision
+    """Filter out image_url content from messages if the model doesn't support vision.
+    This prevents 400 errors when using non-vision models with image content."""
+    
+    # List of models that support vision (updated 2025)
     vision_supported_models = [
+        # OpenAI Models
         "gpt-4-vision",
         "gpt-4o",
         "gpt-4-turbo",
+        "gpt-4.1",
+        "gpt-5",
+        "chatgpt-4o",
+        "o1",
+        "o1-pro",
+        "o3",
+        "o4-mini",
+        "codex",
+        
+        # Anthropic Claude Models
         "claude-3",
-        "gemini-1.5-pro-vision",
-        "gemini-pro-vision",
+        "claude-3.5",
+        "claude-3.7",
+        "claude-4",
+        "claude-opus",
+        "claude-sonnet",
+        "claude-haiku",
+        
+        # Google Gemini Models
+        "gemini",
+        "gemma-3",
+        
+        # Qwen Models
+        "qwen",
+        "qwen2.5-vl",
+        "qwen3-vl",
+        
+        # Meta Llama Models
+        "llama-3.2-90b-vision",
+        "llama-3.2-11b-vision",
+        "llama-4-maverick",
+        "llama-4-scout",
+        "llava",
+        
+        # Mistral Models
+        "pixtral",
+        "mistral-small-3",
+        "mistral-medium-3",
+        
+        # xAI Models
+        "grok",
+        
+        # Other Vision Models
+        "internvl",
+        "molmo",
+        "ui-tars",
+        "glm-4",
+        "ernie-4.5-vl",
+        "step3",
+        "nova-pro",
+        "nova-lite",
+        "minimax-01",
+        "kimi-vl",
+        "yi-vision",
+        "firellava",
+        "nous-hermes-2-vision",
+        "cogito-v2",
+        
+        # OpenRouter Experimental
+        "horizon",
+        "sonoma",
+        "optimus",
+        "quasar",
     ]
-
+    
     # Check if model supports vision
     model_lower = model_id.lower()
     supports_vision = any(vm in model_lower for vm in vision_supported_models)
-
+    
     if supports_vision:
         # Model supports vision, no filtering needed
         return payload
-
+    
     # Filter out image_url from messages
     if "messages" in payload:
         filtered_messages = []
@@ -624,7 +684,7 @@ def filter_vision_content_for_non_vision_models(payload: dict, model_id: str) ->
                     if isinstance(content_item, dict):
                         if content_item.get("type") != "image_url":
                             filtered_content.append(content_item)
-
+                
                 # If we have remaining content, keep the message
                 if filtered_content:
                     filtered_message = {**message, "content": filtered_content}
@@ -638,9 +698,9 @@ def filter_vision_content_for_non_vision_models(payload: dict, model_id: str) ->
             else:
                 # Keep messages with string content as-is
                 filtered_messages.append(message)
-
+        
         payload["messages"] = filtered_messages
-
+    
     return payload
 
 

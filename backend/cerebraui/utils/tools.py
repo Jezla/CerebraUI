@@ -587,7 +587,31 @@ async def execute_tool_server(
         if token:
             headers["Authorization"] = f"Bearer {token}"
 
-        async with aiohttp.ClientSession(trust_env=True) as session:
+        # Smart timeout configuration based on operation type
+        # Crawling operations (web scraping, content extraction) need longer timeouts
+        operation_id = name.lower()
+        is_long_running_operation = any(
+            keyword in operation_id
+            for keyword in [
+                "crawl",
+                "markdown",
+                "html",
+                "pdf",
+                "screenshot",
+                "scrape",
+                "extract",
+            ]
+        )
+
+        # Set timeout: 5 minutes for long-running operations, 30 seconds for others
+        timeout_seconds = 300 if is_long_running_operation else 30
+        timeout = aiohttp.ClientTimeout(total=timeout_seconds)
+
+        log.info(
+            f"Executing tool server operation '{name}' with {timeout_seconds}s timeout"
+        )
+
+        async with aiohttp.ClientSession(trust_env=True, timeout=timeout) as session:
             request_method = getattr(session, http_method.lower())
 
             if http_method in ["post", "put", "patch"]:
@@ -600,6 +624,21 @@ async def execute_tool_server(
                     if response.status >= 400:
                         text = await response.text()
                         raise Exception(f"HTTP error {response.status}: {text}")
+
+                    # Check if response is JSON (expected format)
+                    content_type = response.headers.get("Content-Type", "")
+                    if "application/json" not in content_type:
+                        text = await response.text()
+                        log.error(
+                            f"Tool server '{name}' returned non-JSON response. "
+                            f"Content-Type: {content_type}, Status: {response.status}"
+                        )
+                        raise Exception(
+                            f"Expected JSON response but got {content_type}. "
+                            f"This usually indicates the service returned an error page. "
+                            f"Response preview: {text[:500]}"
+                        )
+
                     return await response.json()
             else:
                 async with request_method(
@@ -610,9 +649,32 @@ async def execute_tool_server(
                     if response.status >= 400:
                         text = await response.text()
                         raise Exception(f"HTTP error {response.status}: {text}")
+
+                    # Check if response is JSON (expected format)
+                    content_type = response.headers.get("Content-Type", "")
+                    if "application/json" not in content_type:
+                        text = await response.text()
+                        log.error(
+                            f"Tool server '{name}' returned non-JSON response. "
+                            f"Content-Type: {content_type}, Status: {response.status}"
+                        )
+                        raise Exception(
+                            f"Expected JSON response but got {content_type}. "
+                            f"This usually indicates the service returned an error page. "
+                            f"Response preview: {text[:500]}"
+                        )
+
                     return await response.json()
 
+    except asyncio.TimeoutError:
+        error = f"Tool server operation '{name}' timed out. The operation may take longer than expected. Consider using async job APIs if available."
+        log.error(f"Timeout error: {error}")
+        return {"error": error}
+    except aiohttp.ClientError as err:
+        error = f"Network error calling tool server '{name}': {str(err)}"
+        log.error(f"Client error: {error}")
+        return {"error": error}
     except Exception as err:
         error = str(err)
-        print("API Request Error:", error)
+        log.error(f"API Request Error for '{name}': {error}")
         return {"error": error}
