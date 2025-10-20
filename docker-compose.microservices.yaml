@@ -42,7 +42,7 @@ services:
     networks:
       - cerebraui-network
     restart: unless-stopped
-    
+
   # Backend Service - Python API
   backend:
     build:
@@ -115,10 +115,10 @@ services:
     volumes:
       - ./mcp-config.json:/app/config.json:ro
     command: >
-      mcpo 
-      --host 0.0.0.0 
-      --port 8000 
-      --config /app/config.json 
+      mcpo
+      --host 0.0.0.0
+      --port 8000
+      --config /app/config.json
       --api-key="your-secret-api-key"
     networks:
       - cerebraui-network
@@ -183,7 +183,7 @@ services:
     command: redis-server --appendonly yes --save 60 1000
     restart: unless-stopped
     networks:
-      - cerebraui-network  
+      - cerebraui-network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 30s
