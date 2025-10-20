@@ -8,7 +8,7 @@
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-memory"]
     },
-    "lf-starter_project": {
+    "langflow": {
       "command": "uvx",
       "args": [
         "mcp-proxy",

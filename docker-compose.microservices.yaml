@@ -122,6 +122,9 @@ services:
       --api-key="your-secret-api-key"
     networks:
       - cerebraui-network
+    depends_on:
+      langflow:
+        condition: service_healthy
 
   # ComfyUI Service - Image Generation
   comfyui:
@@ -149,7 +152,7 @@ services:
 
   # Langflow Service - AI Workflow Builder
   langflow:
-    image: langflowai/langflow:latest
+    image: langflowai/langflow:1.6.0
     pull_policy: always
     container_name: langflow
     restart: unless-stopped
@@ -162,6 +165,12 @@ services:
       - langflow-data:/app/langflow
     networks:
       - cerebraui-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7860"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
   # Redis Service
   redis:
