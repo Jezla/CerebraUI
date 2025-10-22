@@ -36,7 +36,6 @@ export const shortCodesToEmojis = writable(
 				acc[v] = key;
 			}
 		}
-
 		return acc;
 	}, {})
 );
@@ -62,7 +61,9 @@ export const toolServers = writable([]);
 
 export const banners: Writable<Banner[]> = writable([]);
 
-export const settings: Writable<Settings> = writable({});
+export const settings: Writable<Settings> = writable({
+	chatDirection: 'LTR'
+});
 
 export const showSidebar = writable(false);
 export const showSettings = writable(false);
@@ -199,9 +200,11 @@ type Config = {
 	default_locale: string;
 	default_models: string;
 	default_prompt_suggestions: PromptSuggestion[];
+	onboarding?: boolean;
 	features: {
 		auth: boolean;
 		auth_trusted_header: boolean;
+		enable_ldap: boolean;
 		enable_api_key: boolean;
 		enable_signup: boolean;
 		enable_login_form: boolean;

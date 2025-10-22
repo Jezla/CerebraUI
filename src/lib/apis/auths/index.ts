@@ -324,6 +324,194 @@ export const userSignUp = async (
 	return res;
 };
 
+export const sendEmail = async (email: string, type: string) => {
+	// 向后端api发送一个重置密码的请求
+	let error = null;
+
+	const res = await fetch(`${WEBUI_API_BASE_URL}/auths/send_email`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json'
+		},
+		body: JSON.stringify({
+			email: email,
+			type: type
+		})
+	})
+		if (error) {
+			throw error;
+		}
+		if (!res.ok) {
+			throw await res.json();
+		}
+		const data = await res.json();
+		return data;
+}
+
+export const verifyOtp = async (email: string, code: string, token: string) => {
+	let error = null;
+
+	const res = await fetch(`${WEBUI_API_BASE_URL}/auths/verify_otp`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json'
+		},
+		body: JSON.stringify({
+			email: email,
+			otp: code,
+			token: token
+		})
+	})
+		.then(async (res) => {
+			if (!res.ok) throw await res.json();
+			return await res.json();
+		})
+		.catch((err) => {
+			console.log(err);
+			error = err.detail;
+			return null;
+		});
+	if (error) {
+		throw error;
+	}
+	return res;
+}
+
+export const verifyToken = async (email: string, token: string) => {
+	let error = null;
+	const res = await fetch(`${WEBUI_API_BASE_URL}/auths/verify_otp_token`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json'
+		},
+		body: JSON.stringify({
+			email: email,
+			token: token
+		})
+	})
+		.then(async (res) => {
+			if (!res.ok) throw await res.json();
+			return res.json();
+	})
+		.catch((err) => {
+			console.log(err);
+			error = err.detail;
+		return false;
+	});
+	if (error) {
+		throw error;
+	}	
+	return res;
+}
+
+export const verifyResetToken = async (email: string, token: string) => {
+	let error = null;
+	const res = await fetch(`${WEBUI_API_BASE_URL}/auths/verify_reset_token`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json'
+		},
+		body: JSON.stringify({
+			email: email,
+			token: token
+		})
+	})
+		.then(async (res) => {
+			if (!res.ok) throw await res.json();
+			return res.json();
+	})
+		.catch((err) => {
+			console.log(err);
+			error = err.detail;
+		return false;
+	});
+	if (error) {
+		throw error;
+	}	
+	return res;
+}
+
+export const resetPassword = async (email: string, newPassword: string, token: string) => {
+	let error = null;
+	const res = await fetch(`${WEBUI_API_BASE_URL}/auths/resetPassword`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json'
+		},
+		body: JSON.stringify({
+			email: email,
+			new_password: newPassword,
+			token: token
+		})
+	})
+		.then(async (res) => {
+			if (!res.ok) throw await res.json();
+			return res.json();
+		})
+		.catch((err) => {
+			console.log(err);
+			error = err.detail;
+			return null;
+		});
+	if (error) {
+		throw error;
+	}	
+	return res;
+}
+
+export const getEmailType = async (token: string) => {
+	let error = null;
+	const res = await fetch(`${WEBUI_API_BASE_URL}/auths/get_email_type`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json'
+		},
+		body: JSON.stringify({
+			token: token
+		})
+	})
+		.then(async (res) => {
+			if (!res.ok) throw await res.json();
+			return res.json();
+		})
+		.catch((err) => {
+			console.log(err);
+			error = err.detail;
+			return null;
+		});
+	if (error) {
+		throw error;
+	}
+	return res.type;
+}
+
+export const verifyCFToken = async (token: string) => {
+	let error = null;
+	const res = await fetch(`${WEBUI_API_BASE_URL}/auths/verify_cf_token`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json'
+		},
+		body: JSON.stringify({
+			turnstile_token: token
+		})
+	})
+		.then(async (res) => {
+			if (!res.ok) throw await res.json();
+			return res.json();
+		})
+		.catch((err) => {
+			console.log(err);
+			error = err.detail;
+			return null;
+		});
+	if (error) {
+		throw error;
+	}
+	return res;
+}
+
+
 export const userSignOut = async () => {
 	let error = null;
 

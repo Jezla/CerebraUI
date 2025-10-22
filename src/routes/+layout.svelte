@@ -44,9 +44,11 @@
 	import i18n, { initI18n, getLanguages, changeLanguage } from '$lib/i18n';
 	import { bestMatchingLanguage } from '$lib/utils';
 	import { getAllTags, getChatList } from '$lib/apis/chats';
+	import { sendEmail } from '$lib/apis/auths';
 	import NotificationToast from '$lib/components/NotificationToast.svelte';
 	import AppSidebar from '$lib/components/app/AppSidebar.svelte';
 	import { chatCompletion } from '$lib/apis/openai';
+	import { error } from '@sveltejs/kit';
 
 	setContext('i18n', i18n);
 
@@ -261,7 +263,7 @@
 				if (done) {
 					if ($isLastActiveTab) {
 						if ($settings?.notificationEnabled ?? false) {
-							new Notification(`${title} | Open WebUI`, {
+							new Notification(`${title} | CerebraUI`, {
 								body: content,
 								icon: `${WEBUI_BASE_URL}/static/favicon.png`
 							});
@@ -410,7 +412,7 @@
 			if (type === 'message') {
 				if ($isLastActiveTab) {
 					if ($settings?.notificationEnabled ?? false) {
-						new Notification(`${data?.user?.name} (#${event?.channel?.name}) | Open WebUI`, {
+						new Notification(`${data?.user?.name} (#${event?.channel?.name}) | CerebraUI`, {
 							body: data?.content,
 							icon: data?.user?.profile_image_url ?? `${WEBUI_BASE_URL}/static/favicon.png`
 						});
@@ -542,11 +544,33 @@
 						toast.error(`${error}`);
 						return null;
 					});
-
-					if (sessionUser) {
+					// Sign email verification
+					if (sessionUser && sessionUser.needs_verification) {
+						localStorage.removeItem('token');
+						sessionStorage.removeItem('token');
+						sessionStorage.removeItem('email');
+						document.getElementById('splash-screen')?.remove();
+						loaded = true;
+						if ($page.url.pathname !== '/auth' && $page.url.pathname !== '/verify') {
+							goto(`/auth?redirect=${encodedUrl}`);
+						}
+						return;
+					}
+					// Sign up email verification
+					if (sessionUser && !sessionUser.is_email_verified) {
+						localStorage.removeItem('token');
+						sessionStorage.removeItem('token');
+						sessionStorage.removeItem('email');
+						document.getElementById('splash-screen')?.remove();
+						loaded = true;
+						if ($page.url.pathname !== '/auth' && $page.url.pathname !== '/verify') {
+							goto(`/auth?redirect=${encodedUrl}`);
+						}
+						return;
+					}
+					if (sessionUser && !sessionUser.needs_verification) {
 						// Save Session User to Store
 						$socket.emit('user-join', { auth: { token: sessionUser.token } });
-
 						await user.set(sessionUser);
 						await config.set(await getBackendConfig());
 					} else {
@@ -557,7 +581,7 @@
 				} else {
 					// Don't redirect if we're already on the auth page
 					// Needed because we pass in tokens from OAuth logins via URL fragments
-					if ($page.url.pathname !== '/auth') {
+					if ($page.url.pathname !== '/auth' && $page.url.pathname !== '/verify') {
 						await goto(`/auth?redirect=${encodedUrl}`);
 					}
 				}

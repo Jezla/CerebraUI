@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "time": {
+      "command": "uvx",
+      "args": ["mcp-server-time", "--local-timezone=Australia/Sydney"]
+    },
+    "memory": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"]
+    },
+    "langflow": {
+      "command": "uvx",
+      "args": [
+        "mcp-proxy",
+        "http://langflow:7860/api/v1/mcp/project/88207430-23c3-4517-816d-f16c1c955778/sse"
+      ]
+    }
+  }
+}
