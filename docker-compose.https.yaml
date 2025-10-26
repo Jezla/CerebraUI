@@ -79,6 +79,13 @@ services:
       - 'OTEL_SERVICE_NAME=cerebraui'
       - 'OTEL_BASIC_AUTH_USERNAME=admin'
       - 'OTEL_BASIC_AUTH_PASSWORD=admin'
+      # AWS S3 Storage
+      - 'STORAGE_PROVIDER=${STORAGE_PROVIDER:-local}'
+      - 'S3_ACCESS_KEY_ID=${S3_ACCESS_KEY_ID:-}'
+      - 'S3_SECRET_ACCESS_KEY=${S3_SECRET_ACCESS_KEY:-}'
+      - 'S3_ENDPOINT_URL=${S3_ENDPOINT_URL:-}'
+      - 'S3_REGION_NAME=${S3_REGION_NAME:-}'
+      - 'S3_BUCKET_NAME=${S3_BUCKET_NAME:-}'
       # Web Search
       - 'ENABLE_WEB_SEARCH=${ENABLE_WEB_SEARCH:-false}'
       - 'WEB_SEARCH_RESULT_COUNT=${WEB_SEARCH_RESULT_COUNT:-2}'
