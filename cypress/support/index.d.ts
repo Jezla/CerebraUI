@@ -7,6 +7,8 @@ declare namespace Cypress {
 		register(name: string, email: string, password: string): Chainable<Element>;
 		registerAdmin(): Chainable<Element>;
 		loginAdmin(): Chainable<Element>;
+		getAuthToken(email: string, password: string): Chainable<string>;
+		getAdminToken(): Chainable<string>;
 		uploadTestDocument(suffix: any): Chainable<Element>;
 		deleteTestDocument(suffix: any): Chainable<Element>;
 	}

@@ -73,6 +73,27 @@ Cypress.Commands.add('register', (name, email, password) => register(name, email
 Cypress.Commands.add('registerAdmin', () => registerAdmin());
 Cypress.Commands.add('loginAdmin', () => loginAdmin());
 
+const getAuthToken = (email: string, password: string) => {
+	return cy.request({
+		method: 'POST',
+		url: '/api/v1/auths/signin',
+		body: {
+			email: email,
+			password: password
+		}
+	}).then((response) => {
+		expect(response.status).to.eq(200);
+		return response.body.token;
+	});
+};
+
+const getAdminToken = () => {
+	return getAuthToken(adminUser.email, adminUser.password);
+};
+
+Cypress.Commands.add('getAuthToken', (email, password) => getAuthToken(email, password));
+Cypress.Commands.add('getAdminToken', () => getAdminToken());
+
 before(() => {
 	cy.registerAdmin();
 });
