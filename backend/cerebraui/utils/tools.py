@@ -98,16 +98,27 @@ def get_tools(
                         token = request.state.token.credentials
 
                     def make_tool_function(function_name, token, tool_server_data):
-                        async def tool_function(**kwargs):
+                        async def tool_function(
+                            __event_emitter__=None,
+                            __event_call__=None,
+                            __user__=None,
+                            __metadata__=None,
+                            __request__=None,
+                            **kwargs
+                        ):
                             print(
                                 f"Executing tool function {function_name} with params: {kwargs}"
                             )
+                            if __event_emitter__:
+                                log.info(f"Tool '{function_name}' has event_emitter, will stream updates")
+
                             return await execute_tool_server(
                                 token=token,
                                 url=tool_server_data["url"],
                                 name=function_name,
                                 params=kwargs,
                                 server_data=tool_server_data,
+                                event_emitter=__event_emitter__,
                             )
 
                         return tool_function
@@ -118,7 +129,7 @@ def get_tools(
 
                     callable = get_async_tool_function_and_apply_extra_params(
                         tool_function,
-                        {},
+                        extra_params,
                     )
 
                     tool_dict = {
@@ -520,8 +531,162 @@ async def get_tool_servers_data(
     return results
 
 
+async def process_sse_stream(
+    response: aiohttp.ClientResponse,
+    name: str,
+    event_emitter: Optional[callable] = None,
+) -> Dict[str, Any]:
+    """
+    Process Server-Sent Events (SSE) stream from response.
+    Reads the stream line by line, emits events in real-time if event_emitter is provided,
+    and collects all data to return as final result.
+    """
+    collected_data = []
+    current_event = {}
+    buffer = ""
+    event_count = 0
+
+    log.info(f"Starting SSE stream processing for '{name}' with event_emitter={'present' if event_emitter else 'absent'}")
+
+    try:
+        # Read the stream chunk by chunk
+        async for chunk_bytes in response.content.iter_chunked(1024):
+            try:
+                chunk = chunk_bytes.decode("utf-8")
+            except UnicodeDecodeError:
+                log.warning(f"Failed to decode chunk in SSE stream for '{name}'")
+                continue
+
+            buffer += chunk
+            lines = buffer.split("\n")
+            # Keep the last incomplete line in buffer
+            buffer = lines[-1]
+
+            # Process complete lines
+            for line in lines[:-1]:
+                line = line.strip()
+
+                if not line:
+                    # Empty line indicates end of event
+                    if current_event and "data" in current_event:
+                        event_count += 1
+                        log.debug(f"SSE event #{event_count} for '{name}': {current_event.get('data', '')[:100]}...")
+
+                        # Emit event in real-time if emitter is available
+                        if event_emitter:
+                            try:
+                                # Parse the data for better display
+                                data_str = current_event.get("data", "")
+                                try:
+                                    data_obj = json.loads(data_str)
+                                    # Extract meaningful message
+                                    if isinstance(data_obj, dict):
+                                        message = data_obj.get("message", data_obj.get("content", str(data_obj)))
+                                    else:
+                                        message = str(data_obj)
+                                except:
+                                    message = data_str
+
+                                await event_emitter(
+                                    {
+                                        "type": "status",
+                                        "data": {
+                                            "description": message,
+                                            "done": False,
+                                        },
+                                    }
+                                )
+                                log.debug(f"Emitted SSE event #{event_count} to frontend")
+                            except Exception as e:
+                                log.warning(f"Failed to emit SSE event: {e}")
+
+                        # Collect data
+                        try:
+                            # Try to parse as JSON
+                            data = json.loads(current_event["data"])
+                            collected_data.append(data)
+                        except json.JSONDecodeError:
+                            # If not JSON, store as string
+                            collected_data.append(current_event["data"])
+
+                        current_event = {}
+                    continue
+
+                # Parse SSE fields
+                if line.startswith("data:"):
+                    data_content = line[5:].strip()
+                    # Handle multi-line data fields
+                    if "data" in current_event:
+                        current_event["data"] += "\n" + data_content
+                    else:
+                        current_event["data"] = data_content
+                elif line.startswith("event:"):
+                    event_type = line[6:].strip()
+                    current_event["event"] = event_type
+                elif line.startswith("id:"):
+                    event_id = line[3:].strip()
+                    current_event["id"] = event_id
+
+        # Process final event if exists
+        if current_event and "data" in current_event:
+            event_count += 1
+            log.info(f"Processing final SSE event #{event_count} for '{name}'")
+
+            if event_emitter:
+                try:
+                    data_str = current_event.get("data", "")
+                    try:
+                        data_obj = json.loads(data_str)
+                        if isinstance(data_obj, dict):
+                            message = data_obj.get("message", data_obj.get("content", str(data_obj)))
+                        else:
+                            message = str(data_obj)
+                    except:
+                        message = data_str
+
+                    await event_emitter(
+                        {
+                            "type": "status",
+                            "data": {
+                                "description": message,
+                                "done": True,
+                            },
+                        }
+                    )
+                    log.debug(f"Emitted final SSE event to frontend")
+                except Exception as e:
+                    log.warning(f"Failed to emit final SSE event: {e}")
+
+            try:
+                data = json.loads(current_event["data"])
+                collected_data.append(data)
+            except json.JSONDecodeError:
+                collected_data.append(current_event["data"])
+
+        log.info(f"SSE stream completed for '{name}': collected {event_count} events, {len(collected_data)} data items")
+
+        # Return collected data
+        if len(collected_data) == 0:
+            return {"result": "Stream completed with no data"}
+        elif len(collected_data) == 1:
+            return {"result": collected_data[0]}
+        else:
+            return {"result": collected_data}
+
+    except Exception as e:
+        log.error(f"Error processing SSE stream for '{name}': {e}")
+        import traceback
+        log.error(traceback.format_exc())
+        return {"error": f"Error processing stream: {str(e)}"}
+
+
 async def execute_tool_server(
-    token: str, url: str, name: str, params: Dict[str, Any], server_data: Dict[str, Any]
+    token: str,
+    url: str,
+    name: str,
+    params: Dict[str, Any],
+    server_data: Dict[str, Any],
+    event_emitter: Optional[callable] = None,
 ) -> Any:
     error = None
     try:
@@ -588,11 +753,16 @@ async def execute_tool_server(
             headers["Authorization"] = f"Bearer {token}"
 
         # Smart timeout configuration based on operation type
-        # Crawling operations (web scraping, content extraction) need longer timeouts
+        # Long-running operations (research, workflows, crawling, etc.) need extended timeouts
         operation_id = name.lower()
         is_long_running_operation = any(
             keyword in operation_id
             for keyword in [
+                "research",
+                "workflow",
+                "langflow",
+                "deepresearch",
+                "deep_research",
                 "crawl",
                 "markdown",
                 "html",
@@ -603,8 +773,8 @@ async def execute_tool_server(
             ]
         )
 
-        # Set timeout: 5 minutes for long-running operations, 30 seconds for others
-        timeout_seconds = 300 if is_long_running_operation else 30
+        # Set timeout: 10 minutes for long-running operations (like DeepResearch), 30 seconds for others
+        timeout_seconds = 600 if is_long_running_operation else 30
         timeout = aiohttp.ClientTimeout(total=timeout_seconds)
 
         log.info(
@@ -625,21 +795,30 @@ async def execute_tool_server(
                         text = await response.text()
                         raise Exception(f"HTTP error {response.status}: {text}")
 
-                    # Check if response is JSON (expected format)
+                    # Check content type
                     content_type = response.headers.get("Content-Type", "")
-                    if "application/json" not in content_type:
-                        text = await response.text()
-                        log.error(
-                            f"Tool server '{name}' returned non-JSON response. "
-                            f"Content-Type: {content_type}, Status: {response.status}"
-                        )
-                        raise Exception(
-                            f"Expected JSON response but got {content_type}. "
-                            f"This usually indicates the service returned an error page. "
-                            f"Response preview: {text[:500]}"
-                        )
 
-                    return await response.json()
+                    # Handle SSE (Server-Sent Events) stream
+                    if "text/event-stream" in content_type:
+                        log.info(
+                            f"Tool server '{name}' returned SSE stream, processing in real-time"
+                        )
+                        return await process_sse_stream(response, name, event_emitter)
+
+                    # Handle JSON response
+                    if "application/json" in content_type:
+                        return await response.json()
+
+                    # Unknown content type
+                    text = await response.text()
+                    log.error(
+                        f"Tool server '{name}' returned unexpected content type. "
+                        f"Content-Type: {content_type}, Status: {response.status}"
+                    )
+                    raise Exception(
+                        f"Expected JSON or SSE stream but got {content_type}. "
+                        f"Response preview: {text[:500]}"
+                    )
             else:
                 async with request_method(
                     final_url,
@@ -650,21 +829,30 @@ async def execute_tool_server(
                         text = await response.text()
                         raise Exception(f"HTTP error {response.status}: {text}")
 
-                    # Check if response is JSON (expected format)
+                    # Check content type
                     content_type = response.headers.get("Content-Type", "")
-                    if "application/json" not in content_type:
-                        text = await response.text()
-                        log.error(
-                            f"Tool server '{name}' returned non-JSON response. "
-                            f"Content-Type: {content_type}, Status: {response.status}"
-                        )
-                        raise Exception(
-                            f"Expected JSON response but got {content_type}. "
-                            f"This usually indicates the service returned an error page. "
-                            f"Response preview: {text[:500]}"
-                        )
 
-                    return await response.json()
+                    # Handle SSE (Server-Sent Events) stream
+                    if "text/event-stream" in content_type:
+                        log.info(
+                            f"Tool server '{name}' returned SSE stream, processing in real-time"
+                        )
+                        return await process_sse_stream(response, name, event_emitter)
+
+                    # Handle JSON response
+                    if "application/json" in content_type:
+                        return await response.json()
+
+                    # Unknown content type
+                    text = await response.text()
+                    log.error(
+                        f"Tool server '{name}' returned unexpected content type. "
+                        f"Content-Type: {content_type}, Status: {response.status}"
+                    )
+                    raise Exception(
+                        f"Expected JSON or SSE stream but got {content_type}. "
+                        f"Response preview: {text[:500]}"
+                    )
 
     except asyncio.TimeoutError:
         error = f"Tool server operation '{name}' timed out. The operation may take longer than expected. Consider using async job APIs if available."
