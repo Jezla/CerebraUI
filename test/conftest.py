@@ -61,6 +61,48 @@ except ModuleNotFoundError:  # pragma: no cover - executed in test env without u
     sys.modules["uvicorn"] = uvicorn_stub
 
 
+try:  # pragma: no cover - optional dependency dropped in py>=1.11
+    import py  # type: ignore
+except ModuleNotFoundError:  # pragma: no cover - ensure ``py`` is importable
+    py = types.ModuleType("py")
+    py.__path__ = []  # type: ignore[attr-defined]
+    sys.modules["py"] = py
+
+if "py.xml" not in sys.modules:  # pragma: no cover - compatibility shim
+    py_xml_stub = types.ModuleType("py.xml")
+
+    class _Tag:
+        """Minimal stand-in for :mod:`py.xml` tag objects."""
+
+        def __init__(self, tag: str, *children, **attributes):
+            self._tag = tag
+            self._children = list(children)
+            self._attributes = dict(attributes)
+
+        def __call__(self, *children, **attributes):
+            combined_attributes = self._attributes | attributes
+            combined_children = [*self._children, *children]
+            return _Tag(self._tag, *combined_children, **combined_attributes)
+
+        def __str__(self) -> str:  # pragma: no cover - debug helper
+            attrs = "".join(f' {name}="{value}"' for name, value in self._attributes.items())
+            body = "".join(map(str, self._children))
+            return f"<{self._tag}{attrs}>{body}</{self._tag}>"
+
+        __repr__ = __str__
+
+    class _HtmlFactory:
+        def __getattr__(self, item: str):  # pragma: no cover - dynamic tag access
+            return _Tag(item)
+
+        def __call__(self, *children, **attributes):  # pragma: no cover - html tag root
+            return _Tag("html", *children, **attributes)
+
+    py_xml_stub.html = _HtmlFactory()
+    sys.modules["py.xml"] = py_xml_stub
+    setattr(py, "xml", py_xml_stub)
+
+
 def _ensure_module(name: str, module: types.ModuleType) -> None:
     if name not in sys.modules:
         sys.modules[name] = module
