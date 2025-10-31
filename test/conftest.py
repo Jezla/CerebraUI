@@ -4,6 +4,10 @@ import sys
 import types
 from unittest.mock import Mock
 
+import dataclasses
+import datetime as _dt
+from pathlib import Path
+
 import pytest
 
 
@@ -161,6 +165,141 @@ if "py.xml" not in sys.modules:  # pragma: no cover - compatibility shim
     py_xml_stub.raw = _raw
     sys.modules["py.xml"] = py_xml_stub
     setattr(py, "xml", py_xml_stub)
+
+
+@dataclasses.dataclass
+class _RecordedReport:
+    nodeid: str
+    outcome: str
+    duration: float
+    longrepr: str | None
+
+
+class _HtmlReportPlugin:
+    """Minimal pytest-html compatible reporter."""
+
+    def __init__(self, config: pytest.Config, destination: Path) -> None:
+        self._config = config
+        self._destination = destination
+        self._results: list[_RecordedReport] = []
+        self._session_start = _dt.datetime.now(tz=_dt.timezone.utc)
+
+    def pytest_runtest_logreport(self, report: pytest.TestReport) -> None:  # pragma: no cover - exercised via pytest
+        if report.when != "call":
+            return
+        longrepr: str | None
+        if report.failed:
+            longrepr = str(report.longrepr)
+        elif report.skipped:
+            longrepr = report.longrepr[2] if isinstance(report.longrepr, tuple) else str(report.longrepr)
+        else:
+            longrepr = None
+        self._results.append(
+            _RecordedReport(
+                nodeid=report.nodeid,
+                outcome=report.outcome,
+                duration=report.duration,
+                longrepr=longrepr,
+            )
+        )
+
+    def pytest_sessionfinish(self, session: pytest.Session, exitstatus: int) -> None:  # pragma: no cover - exercised via pytest
+        self._write_report(exitstatus)
+
+    def _write_report(self, exitstatus: int) -> None:
+        self._destination.parent.mkdir(parents=True, exist_ok=True)
+        finished_at = _dt.datetime.now(tz=_dt.timezone.utc)
+        duration = (finished_at - self._session_start).total_seconds()
+        summary_counts: dict[str, int] = {"passed": 0, "failed": 0, "skipped": 0, "xfailed": 0, "xpassed": 0}
+        for result in self._results:
+            summary_counts[result.outcome] = summary_counts.get(result.outcome, 0) + 1
+
+        summary_html = "".join(
+            f"<li><strong>{outcome.title()}</strong>: {count}</li>" for outcome, count in summary_counts.items() if count
+        )
+
+        rows = []
+        for result in self._results:
+            details = "" if result.longrepr is None else f"<pre>{result.longrepr}</pre>"
+            rows.append(
+                "<tr>"
+                f"<td>{result.nodeid}</td>"
+                f"<td class='{result.outcome}'>{result.outcome}</td>"
+                f"<td>{result.duration:.3f}s</td>"
+                f"<td>{details}</td>"
+                "</tr>"
+            )
+        rows_html = "".join(rows)
+
+        html = f"""
+<!DOCTYPE html>
+<html lang=\"en\">
+  <head>
+    <meta charset=\"utf-8\">
+    <title>pytest report</title>
+    <style>
+      body {{ font-family: system-ui, sans-serif; margin: 2rem; }}
+      h1 {{ margin-top: 0; }}
+      table {{ border-collapse: collapse; width: 100%; margin-top: 1.5rem; }}
+      th, td {{ border: 1px solid #ccc; padding: 0.5rem; text-align: left; }}
+      tbody tr:nth-child(even) {{ background: #f9f9f9; }}
+      td.passed {{ color: #0a7d32; font-weight: 600; }}
+      td.failed {{ color: #b30000; font-weight: 600; }}
+      td.skipped {{ color: #555; font-weight: 600; }}
+      pre {{ white-space: pre-wrap; font-family: SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace; }}
+    </style>
+  </head>
+  <body>
+    <h1>pytest session</h1>
+    <p><strong>Exit status:</strong> {exitstatus}</p>
+    <p><strong>Started:</strong> {self._session_start.isoformat()}</p>
+    <p><strong>Finished:</strong> {finished_at.isoformat()}</p>
+    <p><strong>Duration:</strong> {duration:.2f}s</p>
+    <ul>{summary_html}</ul>
+    <table>
+      <thead>
+        <tr>
+          <th>Test</th>
+          <th>Outcome</th>
+          <th>Duration</th>
+          <th>Details</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows_html}
+      </tbody>
+    </table>
+  </body>
+</html>
+"""
+        self._destination.write_text(html, encoding="utf-8")
+
+
+def pytest_addoption(parser: pytest.Parser) -> None:  # pragma: no cover - exercised via pytest
+    group = parser.getgroup("htmlreport")
+    group.addoption(
+        "--html",
+        action="store",
+        dest="htmlpath",
+        default=None,
+        metavar="path",
+        help="create html report at given path",
+    )
+
+
+def pytest_configure(config: pytest.Config) -> None:  # pragma: no cover - exercised via pytest
+    html_path = config.getoption("htmlpath")
+    if not html_path:
+        return
+    plugin = _HtmlReportPlugin(config, Path(html_path))
+    config._html_plugin = plugin  # type: ignore[attr-defined]
+    config.pluginmanager.register(plugin, "_minimal_html_reporter")
+
+
+def pytest_unconfigure(config: pytest.Config) -> None:  # pragma: no cover - exercised via pytest
+    plugin = getattr(config, "_html_plugin", None)
+    if plugin is not None:
+        config.pluginmanager.unregister(plugin)
 
 
 def _ensure_module(name: str, module: types.ModuleType) -> None:
