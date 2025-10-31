@@ -69,24 +69,79 @@ except ModuleNotFoundError:  # pragma: no cover - ensure ``py`` is importable
     sys.modules["py"] = py
 
 if "py.xml" not in sys.modules:  # pragma: no cover - compatibility shim
+    from html import escape as _escape
+
     py_xml_stub = types.ModuleType("py.xml")
+
+    def _normalise_attribute(name: str) -> str:
+        name = name.rstrip("_")
+        return name.replace("_", "-")
+
+    class _Raw(str):
+        """Representation of a raw HTML snippet."""
+
+        def __new__(cls, value: str):  # pragma: no cover - trivial wrapper
+            return super().__new__(cls, value)
+
+    class _Attributes(dict):
+        """Attribute proxy providing ``tag.attr.foo = 'bar'`` behaviour."""
+
+        def __getattr__(self, item):  # pragma: no cover - attribute passthrough
+            return self.get(_normalise_attribute(item))
+
+        def __setattr__(self, key, value):  # pragma: no cover - attribute setter
+            self[_normalise_attribute(key)] = value
 
     class _Tag:
         """Minimal stand-in for :mod:`py.xml` tag objects."""
 
+        __slots__ = ("_tag", "_children", "_attributes", "attr")
+
         def __init__(self, tag: str, *children, **attributes):
-            self._tag = tag
-            self._children = list(children)
-            self._attributes = dict(attributes)
+            object.__setattr__(self, "_tag", tag)
+            object.__setattr__(self, "_children", list(children))
+            normalised_attributes = {
+                _normalise_attribute(name): value for name, value in attributes.items()
+            }
+            object.__setattr__(self, "_attributes", normalised_attributes)
+            object.__setattr__(self, "attr", _Attributes(self._attributes))
 
         def __call__(self, *children, **attributes):
-            combined_attributes = self._attributes | attributes
+            combined_attributes = self._attributes.copy()
+            combined_attributes.update(
+                {_normalise_attribute(name): value for name, value in attributes.items()}
+            )
             combined_children = [*self._children, *children]
             return _Tag(self._tag, *combined_children, **combined_attributes)
 
+        def __iter__(self):  # pragma: no cover - iteration convenience
+            return iter(self._children)
+
+        def append(self, child):  # pragma: no cover - mutation helper
+            self._children.append(child)
+            return None
+
+        def extend(self, children):  # pragma: no cover - mutation helper
+            self._children.extend(children)
+            return None
+
+        def unicode(self, indent: int = 0):  # pragma: no cover - compatibility helper
+            return str(self)
+
+        __unicode__ = unicode
+
+        def _render_child(self, child) -> str:
+            if isinstance(child, _Tag):
+                return str(child)
+            if isinstance(child, _Raw):
+                return str(child)
+            return _escape(str(child))
+
         def __str__(self) -> str:  # pragma: no cover - debug helper
-            attrs = "".join(f' {name}="{value}"' for name, value in self._attributes.items())
-            body = "".join(map(str, self._children))
+            attrs = "".join(
+                f' {name}="{value}"' for name, value in self._attributes.items() if value is not None
+            )
+            body = "".join(self._render_child(child) for child in self._children)
             return f"<{self._tag}{attrs}>{body}</{self._tag}>"
 
         __repr__ = __str__
@@ -98,7 +153,12 @@ if "py.xml" not in sys.modules:  # pragma: no cover - compatibility shim
         def __call__(self, *children, **attributes):  # pragma: no cover - html tag root
             return _Tag("html", *children, **attributes)
 
+    def _raw(content: str) -> _Raw:
+        return _Raw(content)
+
+    py_xml_stub.Tag = _Tag
     py_xml_stub.html = _HtmlFactory()
+    py_xml_stub.raw = _raw
     sys.modules["py.xml"] = py_xml_stub
     setattr(py, "xml", py_xml_stub)
 
