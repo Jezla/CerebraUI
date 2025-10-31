@@ -324,6 +324,7 @@ def send_email(email: str, type: str, redis_client: Optional["Redis"] = None):
         otp_model = generate_otp(email=email, type=type, redis_client=redis_client)
         if otp_model is None:
             return None
+        otp_value_for_email = getattr(otp_model, "plain_otp", otp_model.otp)
     except Exception as e:
         print(e)
         raise HTTPException(500, detail=f"Failed to generate OTP: {e}")
@@ -359,7 +360,7 @@ def send_email(email: str, type: str, redis_client: Optional["Redis"] = None):
                                         <span style="font-size: 32px; font-weight: bold; letter-spacing: 3px;
                                                      color: #2563eb; background-color: #eef2ff; padding: 12px 20px;
                                                      border-radius: 8px; display: inline-block;">
-                                            {otp_model.otp}
+                                            {otp_value_for_email}
                                         </span>
                                     </div>
                                     <div style="margin: 20px 0; padding: 20px 0;">
@@ -396,9 +397,10 @@ def generate_otp(email: str, type: str, redis_client: Optional["Redis"] = None):
     normalized_email = email.lower()
     otp_secret = pyotp.random_base32()
     otp = pyotp.TOTP(otp_secret, digits=6, interval=600).now()
+    hashed_otp = hashlib.sha256(otp.encode()).hexdigest()
     otp_model = Otp(
         email=normalized_email,
-        otp=hashlib.sha256(otp.encode()).hexdigest(),
+        otp=hashed_otp,
         attempts=0,
         is_used=False,
     )
@@ -430,12 +432,25 @@ def generate_otp(email: str, type: str, redis_client: Optional["Redis"] = None):
                     )
 
             payload = {
-                "otp": otp_model.otp,
+                "otp": hashed_otp,
                 "token": otp_model.token,
                 "attempts": existing_attempts + 1,
                 "is_used": False,
             }
-            _store_otp_in_redis(redis_client, otp_model.email, payload)
+            if existing_record:
+                ttl_value = None
+                if hasattr(redis_client, "ttl"):
+                    ttl_raw = redis_client.ttl(_otp_redis_key(otp_model.email))
+                    if isinstance(ttl_raw, (int, float)):
+                        ttl_value = ttl_raw if ttl_raw >= 0 else None
+                _update_redis_record(
+                    redis_client,
+                    otp_model.email,
+                    payload,
+                    ttl=ttl_value,
+                )
+            else:
+                _store_otp_in_redis(redis_client, otp_model.email, payload)
         else:
             otp_exist = otpTable().get_otp_by_email(otp_model.email)
             if otp_exist:
@@ -458,8 +473,12 @@ def generate_otp(email: str, type: str, redis_client: Optional["Redis"] = None):
         print(e)
         raise HTTPException(500, detail=f"Failed to save OTP to database: {e}")
     otp_model.attempts = existing_attempts + 1
-    otp_model.otp = otp
     otp_model.token = token
+    otp_model.otp = hashed_otp
+    try:
+        object.__setattr__(otp_model, "plain_otp", otp)
+    except Exception:
+        setattr(otp_model, "plain_otp", otp)
     return otp_model
 
 
