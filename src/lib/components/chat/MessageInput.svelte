@@ -18,6 +18,7 @@
 		tools,
 		user as _user,
 		showControls,
+		showDeepResearch,
 		TTSWorker
 	} from '$lib/stores';
 
@@ -50,9 +51,11 @@
 	import PhotoSolid from '../icons/PhotoSolid.svelte';
 	import Photo from '../icons/Photo.svelte';
 	import CommandLine from '../icons/CommandLine.svelte';
+	import Sparkles from '../icons/Sparkles.svelte';
 	import { KokoroWorker } from '$lib/workers/KokoroWorker';
 	import ToolServersModal from './ToolServersModal.svelte';
 	import Wrench from '../icons/Wrench.svelte';
+	import { startDeepResearchStream } from '$lib/services/deepresearch';
 
 	const i18n = getContext('i18n');
 
@@ -116,12 +119,30 @@
 		(model) => $models.find((m) => m.id === model)?.info?.meta?.capabilities?.vision ?? true
 	);
 
-	const scrollToBottom = () => {
-		const element = document.getElementById('messages-container');
-		element.scrollTo({
-			top: element.scrollHeight,
-			behavior: 'smooth'
-		});
+const scrollToBottom = () => {
+	const element = document.getElementById('messages-container');
+	element.scrollTo({
+		top: element.scrollHeight,
+		behavior: 'smooth'
+	});
+};
+
+	const triggerDeepResearch = () => {
+		const trimmed = prompt?.trim?.() ?? '';
+
+		if (!trimmed) {
+			toast.error($i18n.t('Enter a prompt before starting Deep Research.'));
+			return;
+		}
+
+		try {
+			startDeepResearchStream(trimmed);
+			showDeepResearch.set(true);
+			showControls.set(true);
+		} catch (error) {
+			console.error('Failed to start DeepResearch stream', error);
+			toast.error($i18n.t('Unable to start Deep Research stream.'));
+		}
 	};
 
 	const screenCaptureHandler = async () => {
@@ -1324,33 +1345,49 @@
 													</button>
 												</Tooltip>
 											</div>
-										{:else}
-											<div class=" flex items-center">
-												<Tooltip content={$i18n.t('Send message')}>
-													<button
-														id="send-message-button"
-														class="{!(prompt === '' && files.length === 0)
-															? 'bg-black text-white hover:bg-gray-900 dark:bg-white dark:text-black dark:hover:bg-gray-100 '
-															: 'text-white bg-gray-200 dark:text-gray-900 dark:bg-gray-700 disabled'} transition rounded-full p-1.5 self-center"
-														type="submit"
-														disabled={prompt === '' && files.length === 0}
-													>
-														<svg
-															xmlns="http://www.w3.org/2000/svg"
-															viewBox="0 0 16 16"
-															fill="currentColor"
-															class="size-5"
-														>
-															<path
-																fill-rule="evenodd"
-																d="M8 14a.75.75 0 0 1-.75-.75V4.56L4.03 7.78a.75.75 0 0 1-1.06-1.06l4.5-4.5a.75.75 0 0 1 1.06 0l4.5 4.5a.75.75 0 0 1-1.06 1.06L8.75 4.56v8.69A.75.75 0 0 1 8 14Z"
-																clip-rule="evenodd"
-															/>
-														</svg>
-													</button>
-												</Tooltip>
-											</div>
-										{/if}
+				{:else}
+					<div class="flex items-center">
+						<Tooltip content={$i18n.t('Deep Research')}>
+							<button
+								type="button"
+								class="{prompt.trim().length > 0
+									? 'bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:text-white dark:hover:bg-blue-400 '
+									: 'text-white bg-gray-200 dark:text-gray-900 dark:bg-gray-700 disabled'} transition rounded-full p-1.5 self-center mr-2"
+								on:click={triggerDeepResearch}
+								disabled={!prompt.trim()}
+								aria-label={$i18n.t('Deep Research')}
+							>
+								<Sparkles className="size-5" />
+							</button>
+						</Tooltip>
+					</div>
+
+					<div class="flex items-center">
+						<Tooltip content={$i18n.t('Send message')}>
+							<button
+								id="send-message-button"
+								class="{!(prompt === '' && files.length === 0)
+									? 'bg-black text-white hover:bg-gray-900 dark:bg-white dark:text-black dark:hover:bg-gray-100 '
+									: 'text-white bg-gray-200 dark:text-gray-900 dark:bg-gray-700 disabled'} transition rounded-full p-1.5 self-center"
+								type="submit"
+								disabled={prompt === '' && files.length === 0}
+							>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									viewBox="0 0 16 16"
+									fill="currentColor"
+									class="size-5"
+								>
+									<path
+										fill-rule="evenodd"
+										d="M8 14a.75.75 0 0 1-.75-.75V4.56L4.03 7.78a.75.75 0 0 1-1.06-1.06l4.5-4.5a.75.75 0 0 1 1.06 0l4.5 4.5a.75.75 0 0 1-1.06 1.06L8.75 4.56v8.69A.75.75 0 0 1 8 14Z"
+										clip-rule="evenodd"
+									/>
+								</svg>
+							</button>
+						</Tooltip>
+					</div>
+				{/if}
 									</div>
 								</div>
 							</div>

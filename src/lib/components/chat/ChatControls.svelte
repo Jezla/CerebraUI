@@ -4,7 +4,14 @@
 	import { Pane, PaneResizer } from 'paneforge';
 
 	import { onDestroy, onMount, tick } from 'svelte';
-	import { mobile, showControls, showCallOverlay, showOverview, showArtifacts } from '$lib/stores';
+import {
+	mobile,
+	showControls,
+	showCallOverlay,
+	showOverview,
+	showArtifacts,
+	showDeepResearch
+} from '$lib/stores';
 
 	import Modal from '../common/Modal.svelte';
 	import Controls from './Controls/Controls.svelte';
@@ -12,7 +19,8 @@
 	import Drawer from '../common/Drawer.svelte';
 	import Overview from './Overview.svelte';
 	import EllipsisVertical from '../icons/EllipsisVertical.svelte';
-	import Artifacts from './Artifacts.svelte';
+import Artifacts from './Artifacts.svelte';
+import DeepResearchPanel from './DeepResearchPanel.svelte';
 	import { min } from '@floating-ui/utils';
 
 	export let history;
@@ -124,6 +132,7 @@
 		showControls.set(false);
 		showOverview.set(false);
 		showArtifacts.set(false);
+		showDeepResearch.set(false);
 
 		if ($showCallOverlay) {
 			showCallOverlay.set(false);
@@ -145,7 +154,7 @@
 				}}
 			>
 				<div
-					class=" {$showCallOverlay || $showOverview || $showArtifacts
+					class=" {$showCallOverlay || $showOverview || $showArtifacts || $showDeepResearch
 						? ' h-screen  w-full'
 						: 'px-6 py-4'} h-full"
 				>
@@ -164,6 +173,10 @@
 									showControls.set(false);
 								}}
 							/>
+						</div>
+					{:else if $showDeepResearch}
+						<div class="h-full overflow-y-auto px-1.5 py-4">
+							<DeepResearchPanel />
 						</div>
 					{:else if $showArtifacts}
 						<Artifacts {history} />
@@ -228,7 +241,7 @@
 			{#if $showControls}
 				<div class="flex max-h-full min-h-full">
 					<div
-						class="w-full {($showOverview || $showArtifacts) && !$showCallOverlay
+						class="w-full {($showOverview || $showArtifacts || $showDeepResearch) && !$showCallOverlay
 							? ' '
 							: 'px-4 py-4 bg-white dark:shadow-lg dark:bg-gray-850  border border-gray-100 dark:border-gray-850'} z-40 pointer-events-auto overflow-y-auto scrollbar-hidden"
 					>
@@ -245,6 +258,10 @@
 										showControls.set(false);
 									}}
 								/>
+							</div>
+						{:else if $showDeepResearch}
+							<div class="h-full overflow-y-auto px-4 py-4">
+								<DeepResearchPanel />
 							</div>
 						{:else if $showArtifacts}
 							<Artifacts {history} overlay={dragged} />

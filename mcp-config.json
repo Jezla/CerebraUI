@@ -12,7 +12,7 @@
       "command": "uvx",
       "args": [
         "mcp-proxy",
-        "http://langflow:7860/api/v1/mcp/project/88207430-23c3-4517-816d-f16c1c955778/sse"
+        "http://langflow:7860/api/v1/mcp/project/4e175492-5b95-4d19-9411-ff5486791bf6/sse"
       ]
     }
   }
