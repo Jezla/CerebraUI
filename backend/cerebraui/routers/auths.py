@@ -646,7 +646,6 @@ async def send_otp_email(data: EmailResponse, request: Request):
         raise HTTPException(500, detail=f"Failed to send email: {e}")
     return {
         "received_email": data.email,
-        "otp": otp_model.otp,
         "token": otp_model.token,
     }
 

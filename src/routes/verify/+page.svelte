@@ -68,7 +68,6 @@
 	const verifyOtpHandler = async (email, code) => {
 		type = await getEmailType(sessionStorage.getItem('token'));
 		let token = sessionStorage.getItem('token');
-		console.log('Verify otp：', email, code, token);
 		if (!validateCode(code)) {
 			console.log('Verify check：', validateCode(code));
 			toast.error($i18n.t('Code is not valid'));
@@ -141,7 +140,6 @@
 				sessionStorage.removeItem('token');
 			}
 			sessionStorage.setItem('token', res.token);
-			console.log(res);
 		} catch (error) {
 			console.log(error);
 			toast.error(`${error.detail}`);
@@ -172,7 +170,7 @@
 	let resendTimer;
 	function startCountdown() {
 		clearInterval(resendTimer);
-		if (resendSeconds <= 0) resendSeconds = 10;
+		if (resendSeconds <= 0) resendSeconds = 120;
 		resendTimer = setInterval(() => {
 			if (resendSeconds > 0) {
 				resendSeconds -= 1;
