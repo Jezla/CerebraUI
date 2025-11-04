@@ -6,6 +6,17 @@ import type { Socket } from 'socket.io-client';
 
 import emojiShortCodes from '$lib/emoji-shortcodes.json';
 
+export const createDeepResearchInitialState = (): DeepResearchState => ({
+	isStreaming: false,
+	currentStage: null,
+	events: [],
+	sources: [],
+	runId: null,
+	error: null,
+	lastMessageAt: null,
+	query: null
+});
+
 // Backend
 export const WEBUI_NAME = writable(APP_NAME);
 export const config: Writable<Config | undefined> = writable(undefined);
@@ -61,6 +72,8 @@ export const toolServers = writable([]);
 
 export const banners: Writable<Banner[]> = writable([]);
 
+export const deepResearchState: Writable<DeepResearchState> = writable(createDeepResearchInitialState());
+
 export const settings: Writable<Settings> = writable({
 	chatDirection: 'LTR'
 });
@@ -73,6 +86,7 @@ export const showChangelog = writable(false);
 export const showControls = writable(false);
 export const showOverview = writable(false);
 export const showArtifacts = writable(false);
+export const showDeepResearch = writable(false);
 export const showCallOverlay = writable(false);
 
 export const temporaryChatEnabled = writable(false);
@@ -191,6 +205,38 @@ type Document = {
 	filename: string;
 	name: string;
 	title: string;
+};
+
+export type DeepResearchSource = {
+	title?: string;
+	url?: string;
+	[key: string]: unknown;
+};
+
+export type DeepResearchMeta = {
+	progress?: number;
+	sources?: DeepResearchSource[];
+	run_id?: string;
+	[key: string]: unknown;
+};
+
+export type DeepResearchEvent = {
+	stage?: string;
+	text?: string;
+	meta?: DeepResearchMeta;
+	done?: boolean;
+	[key: string]: unknown;
+};
+
+export type DeepResearchState = {
+	isStreaming: boolean;
+	currentStage: string | null;
+	events: DeepResearchEvent[];
+	sources: DeepResearchSource[];
+	runId: string | null;
+	error: string | null;
+	lastMessageAt: number | null;
+	query: string | null;
 };
 
 type Config = {

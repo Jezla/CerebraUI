@@ -35,6 +35,7 @@
 		showOverview,
 		chatTitle,
 		showArtifacts,
+		showDeepResearch,
 		tools,
 		toolServers
 	} from '$lib/stores';
@@ -448,6 +449,7 @@
 				showCallOverlay.set(false);
 				showOverview.set(false);
 				showArtifacts.set(false);
+				showDeepResearch.set(false);
 			}
 		});
 

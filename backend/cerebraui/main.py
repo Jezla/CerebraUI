@@ -995,6 +995,8 @@ app.include_router(
 )
 app.include_router(utils.router, prefix="/api/v1/utils", tags=["utils"])
 
+from cerebraui.routers import deepresearch
+app.include_router(deepresearch.router)
 
 try:
     audit_level = AuditLevel(AUDIT_LOG_LEVEL)
