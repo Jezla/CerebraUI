@@ -9,209 +9,375 @@
 ![GitHub last commit](https://img.shields.io/github/last-commit/Jezla/CerebraUI?color=red)
 ![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FJezla%2FCerebraUI&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=hits&edge_flat=false)
 [![Discord](https://img.shields.io/badge/Discord-cerebra-ui-blue?logo=discord&logoColor=white)](https://discord.gg/5rJgQTnV4s)
-[![](https://img.shields.io/static/v1?label=Sponsor&message=%E2%9D%A4&logo=GitHub&color=%23fe8e86)](https://github.com/sponsors/tjbck)
 
-**Open WebUI is an [extensible](https://docs.openwebui.com/features/plugin/), feature-rich, and user-friendly self-hosted AI platform designed to operate entirely offline.** It supports various LLM runners like **Ollama** and **OpenAI-compatible APIs**, with **built-in inference engine** for RAG, making it a **powerful AI deployment solution**.
+**CerebraUI is an advanced, extensible, and feature-rich self-hosted AI platform built upon OpenWebUI and enhanced with cutting-edge microservices architecture.** Designed to operate entirely offline while supporting distributed deployments, it integrates various LLM runners like **Ollama** and **OpenAI-compatible APIs**, with **built-in inference engine** for RAG, **Redis caching**, **AI agent workflows**, and **ComfyUI pipeline support**.
 
 ![CerebraUI Demo](./demo.gif)
 
-> [!TIP]  
-> **Looking for an [Enterprise Plan](https://docs.openwebui.com/enterprise)?** – **[Speak with Our Sales Team Today!](mailto:sales@openwebui.com)**
->
-> Get **enhanced capabilities**, including **custom theming and branding**, **Service Level Agreement (SLA) support**, **Long-Term Support (LTS) versions**, and **more!**
+> [!NOTE]
+> **CerebraUI is a fork of OpenWebUI** with significant enhancements including microservices architecture, Redis caching, AI agent workflows, enhanced security features, and ComfyUI integration. All core OpenWebUI functionality is preserved while adding powerful new capabilities.
 
-For more information, be sure to check out our [Open WebUI Documentation](https://docs.openwebui.com/).
+## ✨ New CerebraUI Features
 
-## Key Features of Open WebUI ⭐
+### 🆕 Major Enhancements
 
-- 🚀 **Effortless Setup**: Install seamlessly using Docker or Kubernetes (kubectl, kustomize or helm) for a hassle-free experience with support for both `:ollama` and `:cuda` tagged images.
+- **🏗️ Microservices Architecture**: Complete containerized deployment with separate services for frontend, backend, Redis, LangFlow, and ComfyUI
+- **⚡ Redis Cache Integration**: Intelligent caching for selected reads/writes with TTL support and fallback mechanisms, significantly improving response times under load
+- **🤖 AI Agent Workflow Integration**: Deep Research capabilities via LangFlow SSE streaming with start/stop controls and comprehensive logging
+- **🔍 Enhanced Web Search**: Stabilized `/api/crawl` endpoint with standardized JSON output and async multi-URL crawling from the UI
+- **🛡️ Enhanced Security**: Email verification, token-based password reset, Cloudflare Turnstile integration, and fixed 405/sign-up bypass issues
+- **🎨 ComfyUI Pipeline API Support**: Containerized ComfyUI with txt2img/img2img workflows, auto-selection by input type, and integrated testing
+- **🔄 Complete Rebranding**: Updated names, logos, assets, and documentation throughout the platform
 
-- 🤝 **Ollama/OpenAI API Integration**: Effortlessly integrate OpenAI-compatible APIs for versatile conversations alongside Ollama models. Customize the OpenAI API URL to link with **LMStudio, GroqCloud, Mistral, OpenRouter, and more**.
+## 🔧 Architecture Overview
 
-- 🛡️ **Granular Permissions and User Groups**: By allowing administrators to create detailed user roles and permissions, we ensure a secure user environment. This granularity not only enhances security but also allows for customized user experiences, fostering a sense of ownership and responsibility amongst users.
+CerebraUI introduces a true microservices architecture:
 
-- 📱 **Responsive Design**: Enjoy a seamless experience across Desktop PC, Laptop, and Mobile devices.
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Frontend      │    │     Backend     │    │     Redis       │
+│   (Nginx)       │◄──►│   (FastAPI)     │◄──►│    (Cache)      │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+         │                       │                       │
+         │                       ▼                       │
+         │              ┌─────────────────┐              │
+         │              │    LangFlow     │              │
+         │              │ (AI Workflows)  │              │
+         │              └─────────────────┘              │
+         │                       │                       │
+         ▼                       ▼                       ▼
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│     ComfyUI     │    │     Ollama      │    │  External APIs  │
+│ (Image Gen.)    │    │   (LLMs)        │    │ (OpenAI/etc.)   │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+```
 
-- 📱 **Progressive Web App (PWA) for Mobile**: Enjoy a native app-like experience on your mobile device with our PWA, providing offline access on localhost and a seamless user interface.
+## 🚀 Installation
 
-- ✒️🔢 **Full Markdown and LaTeX Support**: Elevate your LLM experience with comprehensive Markdown and LaTeX capabilities for enriched interaction.
+### Prerequisites
 
-- 🎤📹 **Hands-Free Voice/Video Call**: Experience seamless communication with integrated hands-free voice and video call features, allowing for a more dynamic and interactive chat environment.
+- Docker & Docker Compose
+- At least 4GB RAM (8GB+ recommended for full stack)
+- Optional: NVIDIA GPU with CUDA support for accelerated inference
 
-- 🛠️ **Model Builder**: Easily create Ollama models via the Web UI. Create and add custom characters/agents, customize chat elements, and import models effortlessly through [Open WebUI Community](https://openwebui.com/) integration.
+### Quick Start with Microservices
 
-- 🐍 **Native Python Function Calling Tool**: Enhance your LLMs with built-in code editor support in the tools workspace. Bring Your Own Function (BYOF) by simply adding your pure Python functions, enabling seamless integration with LLMs.
-
-- 📚 **Local RAG Integration**: Dive into the future of chat interactions with groundbreaking Retrieval Augmented Generation (RAG) support. This feature seamlessly integrates document interactions into your chat experience. You can load documents directly into the chat or add files to your document library, effortlessly accessing them using the `#` command before a query.
-
-- 🔍 **Web Search for RAG**: Perform web searches using providers like `SearXNG`, `Google PSE`, `Brave Search`, `serpstack`, `serper`, `Serply`, `DuckDuckGo`, `TavilySearch`, `SearchApi` and `Bing` and inject the results directly into your chat experience.
-
-- 🌐 **Web Browsing Capability**: Seamlessly integrate websites into your chat experience using the `#` command followed by a URL. This feature allows you to incorporate web content directly into your conversations, enhancing the richness and depth of your interactions.
-
-- 🎨 **Image Generation Integration**: Seamlessly incorporate image generation capabilities using options such as AUTOMATIC1111 API or ComfyUI (local), and OpenAI's DALL-E (external), enriching your chat experience with dynamic visual content.
-
-- ⚙️ **Many Models Conversations**: Effortlessly engage with various models simultaneously, harnessing their unique strengths for optimal responses. Enhance your experience by leveraging a diverse set of models in parallel.
-
-- 🔐 **Role-Based Access Control (RBAC)**: Ensure secure access with restricted permissions; only authorized individuals can access your Ollama, and exclusive model creation/pulling rights are reserved for administrators.
-
-- 🌐🌍 **Multilingual Support**: Experience Open WebUI in your preferred language with our internationalization (i18n) support. Join us in expanding our supported languages! We're actively seeking contributors!
-
-- 🧩 **Pipelines, Open WebUI Plugin Support**: Seamlessly integrate custom logic and Python libraries into Open WebUI using [Pipelines Plugin Framework](https://github.com/open-webui/pipelines). Launch your Pipelines instance, set the OpenAI URL to the Pipelines URL, and explore endless possibilities. [Examples](https://github.com/open-webui/pipelines/tree/main/examples) include **Function Calling**, User **Rate Limiting** to control access, **Usage Monitoring** with tools like Langfuse, **Live Translation with LibreTranslate** for multilingual support, **Toxic Message Filtering** and much more.
-
-- 🌟 **Continuous Updates**: We are committed to improving Open WebUI with regular updates, fixes, and new features.
-
-Want to learn more about Open WebUI's features? Check out our [Open WebUI documentation](https://docs.openwebui.com/features) for a comprehensive overview!
-
-## 🔗 Also Check Out Open WebUI Community!
-
-Don't forget to explore our sibling project, [Open WebUI Community](https://openwebui.com/), where you can discover, download, and explore customized Modelfiles. Open WebUI Community offers a wide range of exciting possibilities for enhancing your chat interactions with Open WebUI! 🚀
-
-## How to Install 🚀
-
-### Installation via Python pip 🐍
-
-Open WebUI can be installed using pip, the Python package installer. Before proceeding, ensure you're using **Python 3.11** to avoid compatibility issues.
-
-1. **Install Open WebUI**:
-   Open your terminal and run the following command to install Open WebUI:
-
+1. **Clone the Repository**:
    ```bash
-   pip install open-webui
+   git clone https://github.com/Jezla/CerebraUI.git
+   cd CerebraUI
    ```
 
-2. **Running Open WebUI**:
-   After installation, you can start Open WebUI by executing:
-
+2. **Configure Environment**:
    ```bash
-   open-webui serve
+   cp .env.example .env
+   # Edit .env with your configuration
    ```
 
-This will start the Open WebUI server, which you can access at [http://localhost:8080](http://localhost:8080)
+3. **Start All Services**:
+   ```bash
+   docker-compose up -d
+   ```
 
-### Quick Start with Docker 🐳
+4. **Access CerebraUI**:
+   - Main Interface: http://localhost:3000
+   - API Documentation: http://localhost:8080/docs
+   - ComfyUI: http://localhost:8188
+   - LangFlow: http://localhost:7860
 
-> [!NOTE]  
-> Please note that for certain Docker environments, additional configurations might be needed. If you encounter any connection issues, our detailed guide on [Open WebUI Documentation](https://docs.openwebui.com/) is ready to assist you.
+### Installation Options
 
-> [!WARNING]
-> When using Docker to install Open WebUI, make sure to include the `-v open-webui:/app/backend/data` in your Docker command. This step is crucial as it ensures your database is properly mounted and prevents any loss of data.
+#### **Standard Installation (Ollama Integration)**
+```bash
+docker-compose up -d
+```
+Starts all services including Ollama for local model management.
 
-> [!TIP]  
-> If you wish to utilize Open WebUI with Ollama included or CUDA acceleration, we recommend utilizing our official images tagged with either `:cuda` or `:ollama`. To enable CUDA, you must install the [Nvidia CUDA container toolkit](https://docs.nvidia.com/dgx/nvidia-container-runtime-upgrade/) on your Linux/WSL system.
+#### **GPU-Accelerated Installation**
+```bash
+docker-compose -f docker-compose.gpu.yaml up -d
+```
+Utilizes NVIDIA GPUs for accelerated inference (requires NVIDIA container toolkit).
 
-### Installation with Default Configuration
+#### **API-Only Installation**
+```bash
+docker-compose -f docker-compose.api.yaml up -d
+```
+For use with external API providers (OpenAI, Claude, etc.) without local Ollama.
 
-- **If Ollama is on your computer**, use this command:
+#### **Development Installation**
+```bash
+docker-compose -f docker-compose.playwright.yaml up -d
+```
+Includes development tools and hot-reload capabilities.
 
-  ```bash
-  docker run -d -p 3000:8080 --add-host=host.docker.internal:host-gateway -v open-webui:/app/backend/data --name open-webui --restart always ghcr.io/open-webui/open-webui:main
-  ```
+## ⚙️ Configuration
 
-- **If Ollama is on a Different Server**, use this command:
+### Environment Variables
 
-  To connect to Ollama on another server, change the `OLLAMA_BASE_URL` to the server's URL:
-
-  ```bash
-  docker run -d -p 3000:8080 -e OLLAMA_BASE_URL=https://example.com -v open-webui:/app/backend/data --name open-webui --restart always ghcr.io/open-webui/open-webui:main
-  ```
-
-- **To run Open WebUI with Nvidia GPU support**, use this command:
-
-  ```bash
-  docker run -d -p 3000:8080 --gpus all --add-host=host.docker.internal:host-gateway -v open-webui:/app/backend/data --name open-webui --restart always ghcr.io/open-webui/open-webui:cuda
-  ```
-
-### Installation for OpenAI API Usage Only
-
-- **If you're only using OpenAI API**, use this command:
-
-  ```bash
-  docker run -d -p 3000:8080 -e OPENAI_API_KEY=your_secret_key -v open-webui:/app/backend/data --name open-webui --restart always ghcr.io/open-webui/open-webui:main
-  ```
-
-### Installing Open WebUI with Bundled Ollama Support
-
-This installation method uses a single container image that bundles Open WebUI with Ollama, allowing for a streamlined setup via a single command. Choose the appropriate command based on your hardware setup:
-
-- **With GPU Support**:
-  Utilize GPU resources by running the following command:
-
-  ```bash
-  docker run -d -p 3000:8080 --gpus=all -v ollama:/root/.ollama -v open-webui:/app/backend/data --name open-webui --restart always ghcr.io/open-webui/open-webui:ollama
-  ```
-
-- **For CPU Only**:
-  If you're not using a GPU, use this command instead:
-
-  ```bash
-  docker run -d -p 3000:8080 -v ollama:/root/.ollama -v open-webui:/app/backend/data --name open-webui --restart always ghcr.io/open-webui/open-webui:ollama
-  ```
-
-Both commands facilitate a built-in, hassle-free installation of both Open WebUI and Ollama, ensuring that you can get everything up and running swiftly.
-
-After installation, you can access Open WebUI at [http://localhost:3000](http://localhost:3000). Enjoy! 😄
-
-### Other Installation Methods
-
-We offer various installation alternatives, including non-Docker native installation methods, Docker Compose, Kustomize, and Helm. Visit our [Open WebUI Documentation](https://docs.openwebui.com/getting-started/) or join our [Discord community](https://discord.gg/5rJgQTnV4s) for comprehensive guidance.
-
-### Troubleshooting
-
-Encountering connection issues? Our [Open WebUI Documentation](https://docs.openwebui.com/troubleshooting/) has got you covered. For further assistance and to join our vibrant community, visit the [Open WebUI Discord](https://discord.gg/5rJgQTnV4s).
-
-#### Open WebUI: Server Connection Error
-
-If you're experiencing connection issues, it’s often due to the WebUI docker container not being able to reach the Ollama server at 127.0.0.1:11434 (host.docker.internal:11434) inside the container . Use the `--network=host` flag in your docker command to resolve this. Note that the port changes from 3000 to 8080, resulting in the link: `http://localhost:8080`.
-
-**Example Docker Command**:
+Key environment variables in `.env`:
 
 ```bash
-docker run -d --network=host -v open-webui:/app/backend/data -e OLLAMA_BASE_URL=http://127.0.0.1:11434 --name open-webui --restart always ghcr.io/open-webui/open-webui:main
+# Core Configuration
+CEREBRAUI_PORT=3000
+OLLAMA_BASE_URL=http://ollama:11434
+REDIS_URL=redis://redis:6379
+
+# Security
+JWT_SECRET_KEY=your-secret-key
+ENABLE_EMAIL_VERIFICATION=true
+CLOUDFLARE_TURNSTILE_SITE_KEY=your-site-key
+CLOUDFLARE_TURNSTILE_SECRET_KEY=your-secret-key
+
+# External Services
+OPENAI_API_KEY=your-openai-key
+LANGFLOW_URL=http://langflow:7860
+COMFYUI_URL=http://comfyui:8188
+
+# Cache Configuration
+REDIS_TTL=3600
+ENABLE_CACHE=true
+CACHE_READ_PATTERNS="chat*,model*,user*"
 ```
 
-### Keeping Your Docker Installation Up-to-Date
+### Service Health Checks
 
-In case you want to update your local Docker installation to the latest version, you can do it with [Watchtower](https://containrrr.dev/watchtower/):
+All services include comprehensive health checks:
 
 ```bash
-docker run --rm --volume /var/run/docker.sock:/var/run/docker.sock containrrr/watchtower --run-once open-webui
+# Check service status
+docker-compose ps
+
+# View logs
+docker-compose logs -f [service-name]
+
+# Health check endpoints
+curl http://localhost:8080/health  # Backend
+curl http://localhost:3000/health  # Frontend
 ```
 
-In the last part of the command, replace `open-webui` with your container name if it is different.
+## 🎯 Feature Deep Dive
 
-Check our Updating Guide available in our [Open WebUI Documentation](https://docs.openwebui.com/getting-started/updating).
+### **Redis Cache Integration**
 
-### Using the Dev Branch 🌙
-
-> [!WARNING]
-> The `:dev` branch contains the latest unstable features and changes. Use it at your own risk as it may have bugs or incomplete features.
-
-If you want to try out the latest bleeding-edge features and are okay with occasional instability, you can use the `:dev` tag like this:
+- **Selective Caching**: Only cache-read patterns that benefit from caching
+- **TTL Support**: Configurable time-to-live for cached data
+- **Fallback Mechanism**: Automatic fallback to database if cache fails
+- **Performance**: Significant latency improvement under moderate load
 
 ```bash
-docker run -d -p 3000:8080 -v open-webui:/app/backend/data --name open-webui --add-host=host.docker.internal:host-gateway --restart always ghcr.io/open-webui/open-webui:dev
+# Monitor Redis cache
+docker-compose exec redis redis-cli monitor
 ```
 
-### Offline Mode
+### **AI Agent Workflows (Deep Research)**
 
-If you are running Open WebUI in an offline environment, you can set the `HF_HUB_OFFLINE` environment variable to `1` to prevent attempts to download models from the internet.
+- **LangFlow Integration**: Advanced AI agent workflows via LangFlow
+- **SSE Streaming**: Real-time progress updates via EventSource
+- **Start/Stop Controls**: User-controlled workflow execution
+- **Comprehensive Logging**: Detailed execution logs and replay capabilities
 
 ```bash
-export HF_HUB_OFFLINE=1
+# Access LangFlow interface
+http://localhost:7860
 ```
 
-## What's Next? 🌟
+### **ComfyUI Pipeline Support**
 
-Discover upcoming features on our roadmap in the [Open WebUI Documentation](https://docs.openwebui.com/roadmap/).
+- **Automatic Workflow Selection**: txt2img for text prompts, img2img for image inputs
+- **Containerized Service**: Isolated ComfyUI environment with GPU support
+- **API Integration**: Seamless integration with chat interface
+- **Testing Framework**: Built-in smoke tests and validation
 
-## License 📜
+```bash
+# Access ComfyUI interface
+http://localhost:8188
+```
+
+### **Enhanced Security**
+
+- **Email Verification**: Required email verification for new users
+- **Token Reset**: Secure password reset via email tokens
+- **Cloudflare Turnstile**: Bot protection and rate limiting
+- **Fixed Vulnerabilities**: Resolved 405 bypass and signup security issues
+
+## 🔍 Core Features (Inherited from OpenWebUI)
+
+### **LLM Integration**
+- 🤝 **Ollama/OpenAI API Integration**: Support for Ollama models and OpenAI-compatible APIs
+- 🔧 **Model Builder**: Create and customize Ollama models via Web UI
+- ⚙️ **Multi-Model Conversations**: Engage with multiple models simultaneously
+
+### **User Experience**
+- 📱 **Responsive Design**: Seamless experience across desktop, tablet, and mobile
+- 📱 **PWA Support**: Native app-like experience on mobile devices
+- 🌐🌍 **Multilingual Support**: Available in 30+ languages
+- 🎤📹 **Voice/Video Calls**: Integrated communication features
+
+### **Content & Tools**
+- ✒️🔢 **Markdown & LaTeX**: Full support for rich text and mathematical expressions
+- 📚 **Local RAG**: Built-in Retrieval Augmented Generation with document upload
+- 🔍 **Web Search**: Integrated web search via multiple providers
+- 🌐 **Web Browsing**: Direct website integration via `#URL` command
+- 🐍 **Python Function Calling**: Native Python tool integration
+
+### **Administration**
+- 🔐 **Role-Based Access Control**: Granular permissions and user groups
+- 🧩 **Plugin Support**: Extensible architecture via Pipelines Plugin Framework
+- 📊 **Usage Monitoring**: Built-in analytics and usage tracking
+
+## 🛠️ Development
+
+### **Local Development Setup**
+
+1. **Install Dependencies**:
+   ```bash
+   # Frontend
+   cd src && npm install
+
+   # Backend
+   cd backend && pip install -r requirements.txt
+   ```
+
+2. **Start Development Services**:
+   ```bash
+   # Start supporting services
+   docker-compose up -d redis ollama
+
+   # Start backend
+   cd backend && python -m uvicorn cerebraui.main:app --reload --port 8080
+
+   # Start frontend
+   cd src && npm run dev
+   ```
+
+### **Building Images**
+
+```bash
+# Build all services
+docker-compose build
+
+# Build specific service
+docker-compose build backend
+docker-compose build frontend
+```
+
+### **Running Tests**
+
+```bash
+# Backend tests
+cd backend && python -m pytest
+
+# Frontend tests
+npm run test
+
+# E2E tests
+npm run test:e2e
+```
+
+## 🔧 Troubleshooting
+
+### **Common Issues**
+
+#### **Service Connection Errors**
+```bash
+# Check service connectivity
+docker-compose exec backend ping redis
+docker-compose exec frontend ping backend
+```
+
+#### **Cache Issues**
+```bash
+# Clear Redis cache
+docker-compose exec redis redis-cli FLUSHALL
+```
+
+#### **GPU Not Detected**
+```bash
+# Check GPU availability
+nvidia-docker ps
+docker run --rm --gpus all nvidia/cuda:11.0-base nvidia-smi
+```
+
+### **Performance Optimization**
+
+- **Redis Configuration**: Adjust `REDIS_TTL` and cache patterns based on usage
+- **GPU Settings**: Configure `CUDA_VISIBLE_DEVICES` for multi-GPU setups
+- **Resource Limits**: Set appropriate memory/CPU limits in docker-compose
+
+### **Monitoring**
+
+```bash
+# View resource usage
+docker stats
+
+# Monitor logs
+docker-compose logs -f --tail=100 [service]
+
+# Health status
+curl http://localhost:8080/health
+```
+
+## 🆙 Updating
+
+### **Standard Update**
+```bash
+# Pull latest changes
+git pull origin main
+
+# Rebuild and restart services
+docker-compose down
+docker-compose build --pull
+docker-compose up -d
+```
+
+### **Data Migration**
+```bash
+# Backup data before major updates
+docker-compose exec backend python -m alembic upgrade head
+```
+
+## 🗺️ Roadmap
+
+Upcoming features for CerebraUI:
+
+- [ ] Advanced workflow orchestration
+- [ ] Multi-tenant support
+- [ ] Advanced analytics dashboard
+- [ ] Plugin marketplace
+- [ ] Enhanced model management
+- [ ] Distributed training support
+
+## 📜 License
 
 This project is licensed under the [BSD-3-Clause License](LICENSE) - see the [LICENSE](LICENSE) file for details. 📄
 
-## Support 💬
+## 🤝 Contributing
 
-If you have any questions, suggestions, or need assistance, please open an issue or join our
-[Open WebUI Discord community](https://discord.gg/5rJgQTnV4s) to connect with us! 🤝
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+
+### **Development Areas**
+
+- **Frontend**: SvelteKit applications and components
+- **Backend**: FastAPI services and database models
+- **DevOps**: Docker, Kubernetes, and deployment scripts
+- **AI/ML**: Model integration and workflow optimization
+- **Documentation**: Guides, API docs, and tutorials
+
+## 💬 Support
+
+- **Issues**: [GitHub Issues](https://github.com/Jezla/CerebraUI/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/Jezla/CerebraUI/discussions)
+- **Discord**: [CerebraUI Discord](https://discord.gg/5rJgQTnV4s)
+- **Documentation**: [CerebraUI Docs](https://docs.cerebraui.com)
+
+## 🙏 Acknowledgments
+
+- **OpenWebUI**: Foundation and core functionality
+- **Ollama**: Local LLM management
+- **LangFlow**: AI workflow orchestration
+- **ComfyUI**: Image generation pipelines
+- **Redis**: Caching and performance optimization
 
 ## Star History
 
@@ -225,4 +391,4 @@ If you have any questions, suggestions, or need assistance, please open an issue
 
 ---
 
-Let's make CerebraUI even more amazing together! 💪
+Let's build the future of AI interfaces together with CerebraUI! 💪✨
