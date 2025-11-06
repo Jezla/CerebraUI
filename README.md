@@ -156,6 +156,15 @@ curl http://localhost:8080/health  # Backend
 curl http://localhost:3000/health  # Frontend
 ```
 
+## 📚 Additional Documentation
+
+For more detailed setup and configuration guides, please refer to:
+
+- **[Microservices Architecture Guide](README.microservices.md)** - Detailed explanation of the microservices architecture, service communication, and deployment strategies
+- **[ComfyUI Image-to-Image Setup](COMFYUI_IMG2IMG_SETUP.md)** - Step-by-step guide for setting up and configuring ComfyUI img2img workflows
+- **[HTTPS Configuration Guide](CerebraUI%20HTTPS%20Configuration%20Guide.md)** - Complete guide for configuring SSL/TLS certificates and enabling HTTPS
+- **[S3 Storage Setup](S3_STORAGE_SETUP.md)** - Instructions for integrating AWS S3 or S3-compatible storage solutions
+
 ## 🎯 Feature Deep Dive
 
 ### **Redis Cache Integration**
