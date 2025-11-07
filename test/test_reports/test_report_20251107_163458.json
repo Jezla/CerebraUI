@@ -1,0 +1,42 @@
+{
+  "timestamp": "2025-11-07T16:36:31+11:00",
+  "total_duration": 93,
+  "summary": {
+    "total": 6,
+    "passed": 6,
+    "failed": 0,
+    "success_rate": 100.00
+  },
+  "tests": [
+    {
+      "name": "Container Health",
+      "status": "passed",
+      "duration": 1
+    },
+    {
+      "name": "Connectivity",
+      "status": "passed",
+      "duration": 3
+    },
+    {
+      "name": "Dependencies",
+      "status": "passed",
+      "duration": 0
+    },
+    {
+      "name": "Performance",
+      "status": "passed",
+      "duration": 33
+    },
+    {
+      "name": "Network",
+      "status": "passed",
+      "duration": 1
+    },
+    {
+      "name": "Resilience",
+      "status": "passed",
+      "duration": 55
+    }
+  ]
+}

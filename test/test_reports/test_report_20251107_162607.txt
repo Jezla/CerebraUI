@@ -1,0 +1,20 @@
+======================================
+  CerebraUI Microservices Test Report
+======================================
+Generated: Fri  7 Nov 2025 16:26:45 AEDT
+Total Duration: 38s
+
+Summary:
+  Total Test Suites: 5
+  Passed: 5
+  Failed: 0
+  Success Rate: 100.00%
+
+Detailed Results:
+  ✓ Container Health: PASSED (1s)
+  ✓ Connectivity: PASSED (3s)
+  ✓ Dependencies: PASSED (0s)
+  ✓ Performance: PASSED (33s)
+  ✓ Network: PASSED (1s)
+
+======================================

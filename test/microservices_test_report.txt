@@ -1,0 +1,364 @@
+======================================
+  CerebraUI Microservices Test Suite
+======================================
+Test started at: Fri  7 Nov 2025 16:34:58 AEDT
+
+
+[1/6] Running Container Health Tests...
+==========================================
+==========================================
+    Container Health Check Test
+==========================================
+
+Running health checks on all containers...
+------------------------------------------
+Testing Frontend (cerebraui-frontend)... ✓ PASSED (Status: running, Health: N/A)
+Testing Backend (cerebraui-backend)... ✓ PASSED (Status: running, Health: healthy)
+Testing Redis (cerebraui-redis)... ✓ PASSED (Status: running, Health: healthy)
+Testing Ollama (ollama)... ✓ PASSED (Status: running, Health: N/A)
+Testing Crawl4AI (crawl4ai)... ✓ PASSED (Status: running, Health: healthy)
+Testing Grafana (lgtm)... ✓ PASSED (Status: running, Health: N/A)
+Testing ComfyUI (comfyui)... ✓ PASSED (Status: running, Health: N/A)
+Testing Langflow (langflow)... ✓ PASSED (Status: running, Health: healthy)
+Testing MCPO-Server (mcpo-server)... ✓ PASSED (Status: running, Health: N/A)
+
+==========================================
+           Health Check Summary
+==========================================
+Total Containers:    9
+Healthy:             9
+Failed:              0
+
+✓ All containers are healthy
+
+✓ Container Health tests PASSED (Duration: 1s)
+
+[2/6] Running Connectivity Tests...
+==========================================
+============================================================
+        Service Connectivity Test Suite
+============================================================
+Started at: 2025-11-07 16:34:59
+
+Testing service connectivity...
+------------------------------------------------------------
+✓ Frontend        | Status: 200 | Time: 0.01s
+✓ Backend         | Status: 200 | Time: 0.04s
+✓ Redis           | Port 6379 open | Time: 0.00s
+✓ Ollama          | Status: 200 | Time: 0.01s
+✓ Crawl4AI        | Status: 200 | Time: 0.01s
+✓ Grafana         | Status: 200 | Time: 0.03s
+✓ ComfyUI         | Status: 200 | Time: 0.02s
+✓ Langflow        | Status: 200 | Time: 0.00s
+✓ MCPO Server     | Status: 404 | Time: 0.01s
+
+============================================================
+           Connectivity Test Summary
+============================================================
+Total Services:      9
+Passed:             9
+Failed:             0
+Success Rate:        100.0%
+Avg Response Time:   0.02s
+
+Passed Services:
+------------------------------------------------------------
+  ✓ Frontend
+  ✓ Backend
+  ✓ Redis
+  ✓ Ollama
+  ✓ Crawl4AI
+  ✓ Grafana
+  ✓ ComfyUI
+  ✓ Langflow
+  ✓ MCPO Server
+
+============================================================
+✓ All services are reachable
+
+✓ Connectivity tests PASSED (Duration: 3s)
+
+[3/6] Running Dependencies Tests...
+==========================================
+============================================================
+       Service Dependency Test Suite
+============================================================
+Started at: 2025-11-07 16:35:02
+
+Testing inter-service dependencies...
+------------------------------------------------------------
+
+Testing Backend -> Redis connection...
+✓ Backend can connect to Redis (read/write OK)
+
+Testing Backend -> Ollama connection...
+✓ Backend can connect to Ollama (2 models available)
+
+Testing Backend -> Crawl4AI connection...
+✓ Backend can access Crawl4AI (status: ok)
+
+Testing Backend -> ComfyUI connection...
+✓ Backend can access ComfyUI (system responsive)
+
+Testing Backend -> Langflow connection...
+✓ Backend can access Langflow
+
+Testing Backend -> Grafana connection...
+✓ Backend can access Grafana
+
+============================================================
+        Dependency Test Summary
+============================================================
+Total Tests:     6
+Passed:         6
+Failed:         0
+Success Rate:    100.0%
+
+============================================================
+✓ All service dependencies are working correctly
+
+✓ Dependencies tests PASSED (Duration: 0s)
+
+[4/6] Running Performance Tests...
+==========================================
+==========================================
+       Performance Test Suite
+==========================================
+
+Starting performance tests...
+Note: These tests may take several minutes to complete
+
+==========================================
+1. Frontend Response Time Test
+==========================================
+Using ApacheBench (ab) for testing...
+✓ Frontend test completed
+Failed requests:        0
+Requests per second:    3482.38 [#/sec] (mean)
+Time per request:       2.872 [ms] (mean)
+Time per request:       0.287 [ms] (mean, across all concurrent requests)
+
+==========================================
+2. Backend Health Endpoint Test
+==========================================
+Using ApacheBench (ab) for testing...
+✓ Backend test completed
+Failed requests:        0
+Requests per second:    472.35 [#/sec] (mean)
+Time per request:       105.853 [ms] (mean)
+Time per request:       2.117 [ms] (mean, across all concurrent requests)
+Transfer rate:          73.34 [Kbytes/sec] received
+
+==========================================
+3. Redis Performance Test
+==========================================
+Testing Redis operations...
+✓ Redis test completed
+SET: 50505.05 requests per second, p50=0.855 msec
+GET: 33898.30 requests per second, p50=0.967 msec
+
+
+==========================================
+4. Backend API Load Test
+==========================================
+Using wrk for load testing...
+Running 30-second test with 4 threads and 100 connections...
+✓ Load test completed
+Running 30s test @ http://localhost:8080/health
+  4 threads and 100 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency   172.33ms   77.17ms 598.55ms   80.04%
+    Req/Sec   158.68     58.40   242.00     73.31%
+  Latency Distribution
+     50%  134.09ms
+     75%  154.44ms
+     90%  314.15ms
+     99%  388.10ms
+  17495 requests in 30.05s, 2.65MB read
+Requests/sec:    582.29
+Transfer/sec:     90.45KB
+
+==========================================
+      Performance Test Summary
+==========================================
+Total Tests:     4
+Passed:         4
+Failed:         0
+Skipped:        0
+
+✓ All performance tests passed
+==========================================
+
+✓ Performance tests PASSED (Duration: 33s)
+
+[5/6] Running Network Tests...
+==========================================
+==========================================
+    Network Connectivity Test
+==========================================
+
+1. Checking Docker network existence...
+------------------------------------------
+Detected network: cerebraui_cerebraui-network
+✓ Network 'cerebraui_cerebraui-network' exists
+  Containers in network: 9
+
+  Containers:
+  - lgtm (172.18.0.2/16)
+  - langflow (172.18.0.4/16)
+  - ollama (172.18.0.5/16)
+  - cerebraui-redis (172.18.0.3/16)
+  - crawl4ai (172.18.0.6/16)
+  - cerebraui-frontend (172.18.0.9/16)
+  - cerebraui-backend (172.18.0.8/16)
+  - comfyui (172.18.0.7/16)
+  - mcpo-server (172.18.0.10/16)
+
+
+2. Testing inter-container communication...
+------------------------------------------
+
+Backend Service Connectivity:
+Testing Backend -> Redis... ✓ PASSED
+Testing Backend -> Ollama... ✓ PASSED
+Testing Backend -> Crawl4AI... ✓ PASSED
+Testing Backend -> ComfyUI... ✓ PASSED
+Testing Backend -> Langflow... ✓ PASSED
+Testing Backend -> Grafana... ✓ PASSED
+
+Frontend Service Connectivity:
+Testing Frontend -> Backend... ✓ PASSED
+
+3. Checking network isolation...
+------------------------------------------
+✓ No CerebraUI containers on default bridge network (good)
+
+==========================================
+        Network Test Summary
+==========================================
+Total Tests:     9
+Passed:         9
+Failed:         0
+
+✓ All network tests passed
+==========================================
+
+✓ Network tests PASSED (Duration: 1s)
+
+[6/6] Running Resilience Tests...
+==========================================
+==========================================
+       Resilience Test Suite
+==========================================
+
+Testing service resilience and recovery...
+Note: This test will temporarily stop and restart services
+
+==========================================
+Testing Service Restart Capability
+==========================================
+
+------------------------------------------
+Testing: redis (cerebraui-redis)
+------------------------------------------
+1. Stopping service... ✓
+2. Restarting service... ✓
+3. Waiting for service to be healthy (max 40s)... [starting] [healthy] ✓
+✓ redis recovered successfully
+
+------------------------------------------
+Testing: frontend (cerebraui-frontend)
+------------------------------------------
+1. Stopping service... ✓
+2. Restarting service... ✓
+3. Waiting for service to be healthy (max 40s)... ✓
+✓ frontend recovered successfully
+
+------------------------------------------
+Testing: backend (cerebraui-backend)
+------------------------------------------
+1. Stopping service... ✓
+2. Restarting service... ✓
+3. Waiting for service to be healthy (max 40s)... [starting] [healthy] ✓
+✓ backend recovered successfully
+
+==========================================
+Testing System Stability After Restarts
+==========================================
+
+Checking backend health endpoint... ✓ Backend is responding
+Checking frontend availability... ✓ Frontend is responding
+Checking Redis connectivity... ✓ Redis is accessible
+
+==========================================
+        Resilience Test Summary
+==========================================
+Total Tests:     6
+Passed:         6
+Failed:         0
+
+✓ All resilience tests passed
+  Services successfully recovered from restarts
+==========================================
+
+✓ Resilience tests PASSED (Duration: 55s)
+
+======================================
+         TEST SUMMARY REPORT
+======================================
+Test completed at: Fri  7 Nov 2025 16:36:31 AEDT
+Total duration: 93s
+
+Test Suites:    6
+Passed:         6
+Failed:         0
+Success Rate:   100.00%
+
+Detailed Results:
+--------------------------------------
+  ✓ Container Health: PASSED (1s)
+    Summary:
+      Total Containers:    9
+      Healthy:             9
+      Failed:              0
+
+  ✓ Connectivity: PASSED (3s)
+    Summary:
+      Total Services:      9
+      Passed:             9
+      Failed:             0
+      Success Rate:        100.0%
+
+  ✓ Dependencies: PASSED (0s)
+    Summary:
+      Total Tests:     6
+      Passed:         6
+      Failed:         0
+
+  ✓ Performance: PASSED (33s)
+    Summary:
+      Total Tests:     4
+      Passed:         4
+      Failed:         0
+      Skipped:        0
+
+  ✓ Network: PASSED (1s)
+    Summary:
+      Total Tests:     9
+      Passed:         9
+      Failed:         0
+
+  ✓ Resilience: PASSED (55s)
+    Summary:
+      Total Tests:     6
+      Passed:         6
+      Failed:         0
+
+======================================
+
+Reports generated:
+  - Text report: ./test_reports/test_report_20251107_163458.txt
+  - JSON report: ./test_reports/test_report_20251107_163458.json
+  - Detail logs: ./test_reports/details_20251107_163458/
+
+✓ All tests passed!
