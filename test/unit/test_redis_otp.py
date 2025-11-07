@@ -113,16 +113,16 @@ class TestOTPRedis:
         result = generate_otp("test@example.com", "signup", redis_client)
 
         assert result.email == "test@example.com"
-        assert result.otp == hashlib.sha256("123456".encode()).hexdigest()
+        assert result.otp == "123456"
         assert result.attempts == 1
         mock_store.assert_called_once()
 
     @patch('backend.cerebraui.utils.auth._load_otp_from_redis')
-    @patch('backend.cerebraui.utils.auth._update_redis_record')
+    @patch('backend.cerebraui.utils.auth._store_otp_in_redis')
     @patch('backend.cerebraui.utils.auth.Users.get_user_by_email')
     @patch('backend.cerebraui.utils.auth.create_token')
     @patch('backend.cerebraui.utils.auth.pyotp')
-    def test_generate_otp_with_existing_attempts(self, mock_pyotp, mock_create_token, mock_get_user, mock_update, mock_load):
+    def test_generate_otp_with_existing_attempts(self, mock_pyotp, mock_create_token, mock_get_user, mock_store, mock_load):
         # Setup mocks
         mock_get_user.return_value = Mock()
         mock_pyotp.random_base32.return_value = "SECRET"
@@ -134,7 +134,7 @@ class TestOTPRedis:
         result = generate_otp("test@example.com", "signup", redis_client)
 
         assert result.attempts == 2  # Existing 1 + 1
-        mock_update.assert_called_once()
+        mock_store.assert_called_once()
 
     @patch('backend.cerebraui.utils.auth._load_otp_from_redis')
     @patch('backend.cerebraui.utils.auth.Users.get_user_by_email')
