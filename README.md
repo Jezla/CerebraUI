@@ -7,7 +7,6 @@
 ![GitHub language count](https://img.shields.io/github/languages/count/Jezla/CerebraUI)
 ![GitHub top language](https://img.shields.io/github/languages/top/Jezla/CerebraUI)
 ![GitHub last commit](https://img.shields.io/github/last-commit/Jezla/CerebraUI?color=red)
-![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FJezla%2FCerebraUI&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=hits&edge_flat=false)
 [![Discord](https://img.shields.io/badge/Discord-cerebra-ui-blue?logo=discord&logoColor=white)](https://discord.gg/5rJgQTnV4s)
 
 **CerebraUI is an advanced, extensible, and feature-rich self-hosted AI platform built upon OpenWebUI and enhanced with cutting-edge microservices architecture.** Designed to operate entirely offline while supporting distributed deployments, it integrates various LLM runners like **Ollama** and **OpenAI-compatible APIs**, with **built-in inference engine** for RAG, **Redis caching**, **AI agent workflows**, and **ComfyUI pipeline support**.
