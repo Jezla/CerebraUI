@@ -356,6 +356,7 @@ Upcoming features for CerebraUI:
 - [ ] Enhanced model management
 - [ ] Distributed training support
 
+
 ## 📜 License
 
 This project is licensed under the [BSD-3-Clause License](LICENSE) - see the [LICENSE](LICENSE) file for details. 📄
